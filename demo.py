@@ -5,6 +5,7 @@ from wordfreq import top_n_list
 from core_index import EmbedIndex
 from generator import ForbiddenAPI, GenConfig
 
+
 def build_vocab(n=80_000, min_len=3, max_len=14):
     raw = top_n_list("en", n=n)
     vocab = [w for w in raw if w.isalpha() and min_len <= len(w) <= max_len]

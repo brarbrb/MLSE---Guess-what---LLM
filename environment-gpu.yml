@@ -1,0 +1,29 @@
+name: Guess-what # env name
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - numpy>=1.26
+  - pandas
+  - scikit-learn
+  - requests
+  - tqdm
+  - faiss-gpu  # if this fails, swap to 'faiss-cpu'
+  - pytorch
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=11.8  # CUDA runtime for GPU
+  - pip:
+      - sentence-transformers
+      - transformers
+      - accelerate
+      - sentencepiece
+      - wordfreq
+      - nltk
+
+# To create and activate the environment run:
+# conda env create -f environment-gpu.yml
+# conda activate Guess-what

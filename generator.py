@@ -74,47 +74,117 @@ class LLMClient:
     def __init__(self, backend: Optional[str] = None, llm_params: Optional[dict] = None):
         self.backend = backend # what type of model is used - to select correct api calls
         self.params = llm_params or {}
-
+    
     def propose_phrases(self, word: str, gloss: Optional[str], k: int, max_words: int) -> List[str]:
         """
-        params: 
-        word - target word in base lema form after text "normalization" 
-        gloss - specific meaning of the word (we get it from nltk)
-        k - how many proposes to return (for each term). In configuration it's max_llm_terms_per_sense
-        max_words - in configurations: max_llm_phrase_words - how many words for each proposal 
-        returns a list that contains proosed words by llm
+        Return short 'giveaway' phrases. Prefer strict JSON via Ollama's format='json'.
+        Falls back to extracting the first JSON array if the model misbehaves.
         """
         if not self.backend:
             return []
 
-        # Short, constrained prompt; enforce JSON array only.
         sense_hint = f' (sense: "{gloss}")' if gloss else ""
+        # Keep it *very* explicit. Models still sometimes chat; we sanitize below.
         prompt = (
-            f'Return a JSON array (no prose) of 3-{k} short "forbidden" clue terms for the word "{word}"{sense_hint}. '
-            f'Include near-synonyms and commonsense giveaway phrases (max {max_words} words per item). '
-            f'Do NOT include the word itself or trivial stopwords. JSON array ONLY.'
+            f'Return ONLY a JSON array of 3-{k} short "forbidden" clue terms for "{word}"{sense_hint}. '
+            f'Each item is a string (max {max_words} words). '
+            f'Do NOT include the target word, stopwords, or explanations.'
         )
+
+        import re, json, requests
 
         if self.backend == "ollama":
             host = self.params.get("host", "http://localhost:11434")
             model = self.params["model"]
-            resp = requests.post(
-                f"{host}/api/generate",
-                json={"model": model, "prompt": prompt, "temperature": 0.2, "stream": False, "options": {"num_ctx": 2048}},
-                timeout=60
-            )
-            text = resp.json()["response"].strip()
-            print("the response of the LLM is: ", text) # testing TODO
-            try:
-                arr = json.loads(text)
-            except Exception:
-                print("FLAG in propose phrases") # testing TODO
-                # Fallback parse: first [...] block
-                start, end = text.find("["), text.rfind("]")
-                arr = json.loads(text[start:end+1]) if start != -1 and end != -1 else []
-            return [t.strip().lower() for t in arr if isinstance(t, str) and t.strip()]
-        print("None was added by llm") # testing TODO
+
+            # ① Ask Ollama to enforce JSON
+            payload = {
+                "model": model,
+                "prompt": prompt,
+                "temperature": 0.0,
+                "stream": False,
+                "format": "json",          # <- forces the model to emit valid JSON
+                "options": {"num_ctx": 2048}
+            }
+            resp = requests.post(f"{host}/api/generate", json=payload, timeout=60)
+            resp.raise_for_status()
+            text = resp.json().get("response", "")
+
+            # Sometimes Ollama already returns a parsed JSON object/string. Handle both.
+            arr = None
+            if isinstance(text, list):
+                arr = text
+            elif isinstance(text, str):
+                # ② First try strict parse
+                try:
+                    arr = json.loads(text)
+                except Exception:
+                    # ③ Fallback: strip fences and fish out the first [...] block
+                    # Remove ```...``` fences if present
+                    fenced = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip(), flags=re.IGNORECASE | re.MULTILINE)
+                    # Grab the first JSON array non-greedily
+                    m = re.search(r"\[[\s\S]*?\]", fenced)
+                    if m:
+                        try:
+                            arr = json.loads(m.group(0))
+                        except Exception:
+                            arr = None
+
+            if arr is None:
+                # As a last resort, return empty — we'll just rely on non-LLM signals
+                return []
+
+            # The model sometimes returns {"terms": [...]} — normalize that.
+            if isinstance(arr, dict) and "terms" in arr and isinstance(arr["terms"], list):
+                arr = arr["terms"]
+
+            # Keep only non-empty strings, lowercased
+            return [s.strip().lower() for s in arr if isinstance(s, str) and s.strip()]
+
+        # Other backends (not used right now)
         return []
+
+
+    # def propose_phrases(self, word: str, gloss: Optional[str], k: int, max_words: int) -> List[str]:
+    #     """
+    #     params: 
+    #     word - target word in base lema form after text "normalization" 
+    #     gloss - specific meaning of the word (we get it from nltk)
+    #     k - how many proposes to return (for each term). In configuration it's max_llm_terms_per_sense
+    #     max_words - in configurations: max_llm_phrase_words - how many words for each proposal 
+    #     returns a list that contains proosed words by llm
+    #     """
+    #     if not self.backend:
+    #         return []
+
+    #     # Short, constrained prompt; enforce JSON array only.
+    #     sense_hint = f' (sense: "{gloss}")' if gloss else ""
+    #     prompt = (
+    #         f'Return a JSON array (no prose) of 3-{k} short "forbidden" clue terms for the word "{word}"{sense_hint}. '
+    #         f'Include near-synonyms and commonsense giveaway phrases (max {max_words} words per item). '
+    #         f'Do NOT include the word itself or trivial stopwords. JSON array ONLY.'
+    #     )
+
+    #     if self.backend == "ollama":
+    #         host = self.params.get("host", "http://localhost:11434")
+    #         model = self.params["model"]
+    #         resp = requests.post(
+    #             f"{host}/api/generate",
+    #             json={"model": model, "prompt": prompt, "temperature": 0.2, "stream": False, "options": {"num_ctx": 2048}},
+    #             timeout=60
+    #         )
+    #         text = resp.json()["response"].strip()
+    #         print("the response of the LLM is: ", text) # testing TODO
+    #         try:
+    #             arr = json.loads(text)
+    #         except Exception:
+    #             print("FLAG in propose phrases") # testing TODO
+    #             # Fallback parse: first [...] block
+    #             start, end = text.find("["), text.rfind("]")
+    #             arr = json.loads(text[start:end+1]) if start != -1 and end != -1 else []
+    #         return [t.strip().lower() for t in arr if isinstance(t, str) and t.strip()]
+    #     print("None was added by llm") # testing TODO
+    #     return []
 
 
 
