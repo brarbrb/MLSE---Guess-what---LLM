@@ -5,6 +5,7 @@ from nltk.corpus import stopwords, words # to check that words are actual englis
 import nltk
 
 nltk.download("stopwords", quiet=True)
+nltk.download("wordnet", quiet=True)
 STOPWORDS = set(stopwords.words("english"))
 
 class WordSampler:
@@ -53,6 +54,9 @@ class WordSampler:
         if not clean:
             raise ValueError("All words are used up:(")
         return clean
+    
+    def get_vocab(self):
+        return self.vocab
 
     def random_word(self,
                     exclude: Optional[List[str]] = None) -> str:

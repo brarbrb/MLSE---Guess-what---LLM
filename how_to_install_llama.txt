@@ -1,0 +1,15 @@
+On windows: 
+1)  I've downloaded it from: https://ollama.com/download it downloads the installer file `.exe`. run it to install!
+    You can verify the installation: ollama --version
+
+2)  To check if the server is running: curl http://127.0.0.1:11434/api/tags - shows all models that are installed(pulled)
+
+3)  To pull the needed model: ollama pull llama3 (or ollama pull phi3:mini - lighter but simpler - better if there's no cpu) 
+    !!! If llama3:latest install there's need to update the used model in demo.py (or other file that uses the model)
+
+4)  import requests, json
+    r = requests.post("http://localhost:11434/api/generate",
+                  json={"model":"phi3:mini","prompt":"ping","stream":False},  # "llama3:latest"
+                  timeout=30)
+    print(r.status_code, r.text[:300]) - simple python code that checks responsiveness of the model!
+
