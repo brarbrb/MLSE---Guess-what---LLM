@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block styles %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/room.css') }}">
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script src="{{ url_for('static', filename='js/room.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+  <article style="width: 80%; margin: auto;">
+    <section>
+      <h2>Game room</h2>
+      <div style="display: flex; justify-content: space-between;">
+        <div>
+          <ul id="players-list">
+            <li>
+              <span>Player 1:</span>
+              <span>0 points</span>
+            </li>
+          </ul>
+        </div>
+        <div id="describer-section" style="visibility: hidden">
+          <h3>Your word is: Apple</h3>
+          <b>Forbidden words:</b>
+          <ul id="forbidden-words">
+            <li>Apple</li>
+            <li>fruit</li>
+            <li>red</li>
+            <li>green</li>
+            <li>tree</li>
+            <li>iphone</li>
+            <li>mac</li>
+            <li>ipad</li>
+            <li>earpods</li>
+            <li>newton</li>
+          </ul>
+           <form id="describer-form">
+             <label for="description-input">Enter Description: <input id="description-input" type="text"></label>
+             <input type="submit" value="Send Description">
+           </form>
+        </div>
+        <div id="guesser-section" style="visibility: hidden">
+          <h3>Try to guess the word</h3>
+          <div>
+          <b>Description:</b> <span id="current-description"></span>
+          </div>
+          <form id="guesser-form">
+            <label for="guess-input">Enter Your Guess: <input id="guess-input" type="text"></label>
+            <input type="submit" value="Guess">
+          </form>
+        </div>
+      </div>
+    </section>
+  </article>
+{% endblock %}

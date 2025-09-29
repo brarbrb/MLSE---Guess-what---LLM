@@ -1,4 +1,4 @@
-name: Guess-what # env name
+name: guess-what # env name
 channels:
   - pytorch
   - nvidia
@@ -26,4 +26,4 @@ dependencies:
 
 # To create and activate the environment run:
 # conda env create -f environment-gpu.yml
-# conda activate Guess-what
+# conda activate guess-what

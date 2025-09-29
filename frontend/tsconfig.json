@@ -1,0 +1,72 @@
+{
+  "compilerOptions": {
+    // Target and Module
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "node", // Uses Node.js module resolution
+    "lib": ["DOM", "DOM.Iterable", "ES2020"],
+
+    // JSX Configuration
+    "jsx": "react-jsx", // Uses the new JSX transform (React 17+), no need to import React in every file
+    "jsxImportSource": "react", // Specifies React as the JSX runtime
+
+    // Output Configuration
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "sourceMap": true,
+    "declaration": false,
+    "removeComments": true,
+
+    // Type Checking
+    "strict": true, // Enables all strict type checking options
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "noImplicitReturns": true, // Ensures all code paths return a value
+    "noFallthroughCasesInSwitch": true, // Prevents accidental switch fallthrough
+    "noUncheckedIndexedAccess": false,
+
+    // Module Resolution
+    "esModuleInterop": true, // Enables interop between CommonJS and ES modules
+    "allowSyntheticDefaultImports": true, // Allows default imports from modules without default exports
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "allowJs": true,
+    "checkJs": false,
+
+    // Advanced Options
+    "skipLibCheck": true, // Skips type checking of declaration files for faster compilation
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": false,
+    "incremental": true, // Enables incremental compilation for faster builds
+
+    // Path Mapping (allows imports relative to the root src directory)
+    "baseUrl": "./src",
+    "paths": {
+      "@/*": ["*"],
+      "@/components/*": ["components/*"],
+      "@/styles/*": ["styles/*"],
+      "@/utils/*": ["utils/*"],
+      "@/static/*": ["../static/*"]
+    }
+  },
+
+  "include": [
+    ".d.ts",
+    "src/**/*",
+    "src/**/*.tsx",
+    "src/**/*.ts"
+  ],
+
+  "exclude": [
+    "node_modules",
+    "dist",
+    "static/dist",
+    "**/*.test.ts",
+    "**/*.test.tsx"
+  ],
+
+  "ts-node": {
+    "esm": true
+  }
+}

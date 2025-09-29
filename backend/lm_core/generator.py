@@ -332,8 +332,6 @@ class ForbiddenAPI:
 
         return {"valid": len(violations) == 0, "violations": violations}
     
-        # ... keep your existing code ...
-
     def check_description_llm(
         self,
         word: str,
@@ -357,31 +355,29 @@ class ForbiddenAPI:
         forbidden_lemmas = [lemmatize_term(t) for t in forbidden]
 
         prompt = f"""
-You check a game description for rule violations.
+            You check a game description for rule violations.
 
-Target word: "{w}"
-Forbidden lemmas (exact words/phrases): {forbidden_lemmas}
+            Target word: "{w}"
+            Forbidden lemmas (exact words/phrases): {forbidden_lemmas}
 
-Game rules (return findings only, no prose):
-- The target word itself and ANY same-stem variants are forbidden.
-- Any term from the forbidden lemmas list is forbidden (exact token or exact multiword phrase).
-- Any same-stem variant of a forbidden lemma is also forbidden.
-- Also flag semantic circumventions: spelling with spaces/punctuation/emojis, translations into other languages, "sounds like"/"rhymes with", or a near-paraphrase that gives the word away.
+            Game rules (return findings only, no prose):
+            - The target word itself and ANY same-stem variants are forbidden.
+            - Any term from the forbidden lemmas list is forbidden 
+            - Any same-stem variant of a forbidden lemma is also forbidden.
+            - Avoid spelling circumvention (e.g., "ph0ne" for "phone") or sounds-like hints (e.g., "fone" for "phone").
+            - Avoid translation circumvention (e.g., "telefono" for "phone").
+            Return ONLY a JSON array of objects, each:
+            {{"span": "<exact offending substring from the description>",
+                "rule": "<one of: phrase-forbidden | target-stem-forbidden | lemma-forbidden | banned-stem-forbidden | spelling-circumvention | translation-circumvention | sounds-like-hint | near-paraphrase>"}}
 
-Return ONLY a JSON array of objects, each:
-  {{"span": "<exact offending substring from the description>",
-    "rule": "<one of: phrase-forbidden | target-stem-forbidden | lemma-forbidden | banned-stem-forbidden | spelling-circumvention | translation-circumvention | sounds-like-hint | near-paraphrase>"}}
+            Description:
+            \"\"\"{desc}\"\"\"
 
-Description:
-\"\"\"{desc}\"\"\"
+            Limit to {max_findings} findings.
+            """
 
-Limit to {max_findings} findings.
-"""
-
-        # Use the same backend you configured for generation.
         findings = []
         if self.llm.backend == "ollama":
-            import requests, json
             host = self.llm.params.get("host", "http://localhost:11434")
             model = self.llm.params["model"]
             r = requests.post(
@@ -390,21 +386,12 @@ Limit to {max_findings} findings.
                 timeout=60
             )
             text = r.json()["response"].strip()
+            print("LLM findings raw:", text)  # TODO: testing only - delete
             try:
                 findings = json.loads(text)
             except Exception:
                 start, end = text.find("["), text.rfind("]")
                 findings = json.loads(text[start:end+1]) if start != -1 and end != -1 else []
-        elif self.llm.backend == "openai":
-            import json
-            msgs = [
-                {"role": "system", "content": "Reply ONLY with a JSON array of objects as specified."},
-                {"role": "user", "content": prompt},
-            ]
-            r = self.llm._client.chat.completions.create(
-                model=self.llm.params["model"], messages=msgs, temperature=0.2, max_tokens=300
-            )
-            findings = json.loads(r.choices[0].message.content.strip())
         else:
             return {"valid": True, "violations": []}
 

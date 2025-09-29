@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block styles %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/menu.css') }}">
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script src="{{ url_for('static', filename='js/menu.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+  <article>
+    <section>
+      <h2>Game Menu</h2>
+      <div>
+        <button onclick="createRoom()">
+          Create New Game
+        </button>
+        <br>
+        <button onclick="joinRandomRoom()">
+          Join Existing Game
+        </button>
+      </div>
+    </section>
+  </article>
+{% endblock %}

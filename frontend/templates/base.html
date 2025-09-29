@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="{{ url_for('static', filename='images/favicon.ico') }}" type="image/x-icon">
+  <title>{% block title %}❗Guess What❓{% endblock %}</title>
+
+  {% block styles %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  {% endblock %}
+
+  {% block scripts %}
+    <script src="{{ url_for('static', filename='js/login.js') }}"></script>
+    <script src="{{ url_for('static', filename='dist/bundle.js') }}"></script>
+  {% endblock %}
+</head>
+
+<body>
+  <header>
+    <nav>
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5em;">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo">
+        <div>
+          <span id="username"></span>
+          <button id="login-button" onclick="login()">Login</button>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    {% block content %}
+      <!-- Default content if no template is provided -->
+    {% endblock %}
+  </main>
+
+  <footer>
+    <p style="text-align: center; margin: 0;">
+      Created by Omer-Shay Becker, Barbara Aleksandrov, and Kfir Moshe Nissim.
+    </p>
+  </footer>
+</body>
+</html>
