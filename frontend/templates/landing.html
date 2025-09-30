@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Guess What — Welcome{% endblock %}
+
+{% block styles %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <style>
+    .center-wrap { min-height: 65vh; display: grid; place-items: center; }
+    .card { text-align: center; padding: 2rem; border-radius: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.08); }
+    .big-logo { width: 160px; height: auto; margin-bottom: 1rem; }
+    .btn-row { display: flex; gap: 1rem; justify-content: center; margin-top: 1rem; }
+    .btn { padding: .75rem 1.25rem; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; }
+    .btn-primary { background: #3b82f6; color: white; }
+    .btn-secondary { background: #10b981; color: white; }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <section class="center-wrap">
+    <div class="card">
+      <img class="big-logo" src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo">
+      <h1>Guess What</h1>
+      <p style="opacity:.8">A fast, fun word-guessing game.</p>
+      <div class="btn-row">
+        <a href="{{ url_for('auth.login_get') }}"><button class="btn btn-primary">Login</button></a>
+        <a href="{{ url_for('auth.signup_get') }}"><button class="btn btn-secondary">Sign up</button></a>
+      </div>
+    </div>
+  </section>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Sign up — Guess What{% endblock %}
+{% block styles %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <style>
+    .form-card { max-width: 480px; margin: 4rem auto; padding: 2rem; border-radius: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.08); }
+    .field { display: grid; gap: .5rem; margin-bottom: 1rem; }
+    .error { background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; padding:.5rem .75rem; border-radius:8px; margin-bottom:1rem; }
+    input { padding:.6rem .8rem; border:1px solid #ddd; border-radius:8px; }
+    button { padding:.7rem 1rem; border:none; border-radius:10px; background:#10b981; color:white; font-weight:600; cursor:pointer; }
+  </style>
+{% endblock %}
+{% block content %}
+  <article class="form-card">
+    <h2>Create your account</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for cat, msg in messages %}
+          {% if cat == 'error' %}<div class="error">{{ msg }}</div>{% endif %}
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="post" action="{{ url_for('auth.signup_post') }}">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" name="email" required>
+      </div>
+      <div class="field">
+        <label>Username</label>
+        <input name="username" required>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" name="password" required minlength="6">
+      </div>
+      <button type="submit">Sign up</button>
+    </form>
+  </article>
+{% endblock %}

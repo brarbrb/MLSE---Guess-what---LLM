@@ -18,6 +18,7 @@ def create_app() -> Flask:
         static_folder=str(FRONTEND_STATIC),         # where /static/* will be served from
         template_folder=str(FRONTEND_TEMPLATES),    # where render_template looks
     )
+    app.secret_key = "change-me"
 
     # ---- DB tables (optional if you have models) ----
     with app.app_context():

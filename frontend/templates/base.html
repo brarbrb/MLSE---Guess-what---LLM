@@ -22,7 +22,7 @@
       <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5em;">
         <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo">
         <div>
-          <span id="username"></span>
+          <span id="username">{{ session.get('username', '') }}</span>
           <button id="login-button" onclick="login()">Login</button>
         </div>
       </div>
