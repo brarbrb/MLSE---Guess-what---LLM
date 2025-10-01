@@ -1,1 +1,4 @@
 __pycache__
+# JS build stuff we don’t use anymore
+frontend/node_modules/
+frontend/static/dist/

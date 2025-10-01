@@ -42,6 +42,8 @@ class Game(Base):
     CurrentRound: Mapped[int] = mapped_column(Integer, default=0)
     CurentLeaderID: Mapped[int | None] = mapped_column(ForeignKey("User.UserID"))
     WinnerID: Mapped[int | None] = mapped_column(ForeignKey("User.UserID"))
+    IsPrivate: Mapped[bool] = mapped_column(Boolean, default=False)
+
 
     __table_args__ = (
         CheckConstraint("Status IN ('waiting','active','completed','cancelled')"),

@@ -6,23 +6,109 @@
 {% endblock %}
 
 {% block scripts %}
-  {{ super() }}
+  <script>
+    window.CURRENT_USER = { id: {{ session.get('user_id') or 'null' }}, username: "{{ session.get('username','') }}" };
+  </script>
   <script src="{{ url_for('static', filename='js/menu.js') }}"></script>
 {% endblock %}
 
+
 {% block content %}
-  <article>
-    <section>
-      <h2>Game Menu</h2>
-      <div>
-        <button onclick="createRoom()">
-          Create New Game
-        </button>
-        <br>
-        <button onclick="joinRandomRoom()">
-          Join Existing Game
-        </button>
+  <section class="menu-wrap">
+    <!-- Left column -->
+<div class="menu-left">
+  <div class="menu-card">
+    <button class="btn btn-primary menu-btn" id="btn-new">Create new game</button>
+    <button class="btn btn-secondary menu-btn" id="btn-join">Join existing game</button>
+    <button class="btn btn-ghost menu-btn" id="btn-profile" disabled>Profile (soon)</button>
+  </div>
+</div>
+
+
+    <!-- Right column (blank for now) -->
+    <div class="menu-right">
+      <!-- reserved for future content -->
+    </div>
+  </section>
+
+  <!-- Panels (overlay) -->
+  <div class="overlay" id="overlay" hidden></div>
+
+  <!-- Create Game Panel -->
+  <div class="panel" id="panel-new" hidden>
+    <h3>Create a game</h3>
+    <form id="form-new" class="panel-form">
+      <label>Round time (sec)
+        <input type="number" name="round_time" value="180" min="30" step="10" required>
+      </label>
+
+      <label>Difficulty
+        <select name="difficulty">
+          <option value="easy">easy</option>
+          <option value="medium" selected>medium</option>
+          <option value="hard">hard</option>
+        </select>
+      </label>
+
+      <label>Allow hints
+        <input type="checkbox" name="allow_hints" checked>
+      </label>
+
+      <label>Max hints per round
+        <input type="number" name="max_hints" value="3" min="0" max="10">
+      </label>
+
+      <label>Max players
+        <input type="number" name="max_players" value="5" min="3" max="10" required>
+      </label>
+
+      <label>Private game
+        <input type="checkbox" name="is_private">
+      </label>
+
+      <label>Total rounds
+        <input type="number" name="total_rounds" value="6" min="1" max="20" required>
+      </label>
+
+      <div class="panel-actions">
+        <button type="button" class="btn" data-close>Cancel</button>
+        <button type="submit" class="btn btn-primary">Create room</button>
       </div>
-    </section>
-  </article>
+    </form>
+  </div>
+
+  <!-- Lobby Panel (after creating or joining) -->
+  <div class="panel" id="panel-lobby" hidden>
+    <h3>Lobby</h3>
+    <div id="lobby-meta"></div>
+    <ul id="lobby-players" class="player-list"></ul>
+    <div class="panel-actions" id="lobby-actions">
+      <button class="btn" data-close>Close</button>
+      <button class="btn btn-danger" id="btn-start" hidden>Start game</button>
+    </div>
+  </div>
+
+  <!-- Join Panel -->
+  <div class="panel" id="panel-join" hidden>
+    <h3>Join a game</h3>
+    <div class="join-grid">
+      <div>
+        <h4>Private game</h4>
+        <form id="form-join-code">
+          <label>Enter code
+            <input name="game_code" maxlength="8" required placeholder="e.g. A1B2C3">
+          </label>
+          <button class="btn btn-primary" type="submit">Join by code</button>
+        </form>
+      </div>
+      <div class="join-divider"></div>
+      <div class="join-right">
+        <h4>Public</h4>
+        <button class="btn btn-secondary" id="btn-join-random">Join a random game</button>
+      </div>
+    </div>
+    <div class="panel-actions">
+      <button class="btn" data-close>Close</button>
+    </div>
+  </div>
 {% endblock %}

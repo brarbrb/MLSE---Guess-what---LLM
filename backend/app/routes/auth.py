@@ -10,7 +10,6 @@ def _get_db():
     return SessionLocal()
 
 @auth_bp.get("/landing")
-@auth_bp.get("/")
 def landing():
     # Landing with logo + buttons
     return render_template("landing.html")
@@ -47,6 +46,8 @@ def signup_post():
         # Auto-login after signup
         session["user_id"] = user.UserID
         session["username"] = user.Username
+        session.permanent = True
+
         return redirect(url_for("pages.menu"))
     except Exception as e:
         db.rollback()
@@ -78,6 +79,8 @@ def login_post():
 
         session["user_id"] = user.UserID
         session["username"] = user.Username
+        session.permanent = True
+
         return redirect(url_for("pages.menu"))
     finally:
         db.close()

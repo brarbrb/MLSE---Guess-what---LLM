@@ -6,35 +6,46 @@
   <link rel="icon" href="{{ url_for('static', filename='images/favicon.ico') }}" type="image/x-icon">
   <title>{% block title %}❗Guess What❓{% endblock %}</title>
 
-  {% block styles %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
-  {% endblock %}
+  <!-- Global CSS only -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 
-  {% block scripts %}
-    <script src="{{ url_for('static', filename='js/login.js') }}"></script>
-    <script src="{{ url_for('static', filename='dist/bundle.js') }}"></script>
-  {% endblock %}
+  {% block styles %}{% endblock %}
+  {% block scripts %}{% endblock %}
 </head>
 
 <body>
-  <header>
-    <nav>
-      <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5em;">
-        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo">
-        <div>
-          <span id="username">{{ session.get('username', '') }}</span>
-          <button id="login-button" onclick="login()">Login</button>
-        </div>
+  <!-- HEADER -->
+  <header class="site-header">
+    <!-- Left: logo -->
+    <a class="logo-link"
+       href="{{ url_for('pages.menu') if session.get('user_id') else url_for('auth.landing') }}">
+      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Guess What" class="logo-img">
+    </a>
+
+    <!-- Center: username (only when logged in) -->
+    {% if session.get('user_id') %}
+      <div class="header-center">
+        <span class="header-username">{{ session.get('username') }}</span>
       </div>
-    </nav>
+    {% else %}
+      <div class="header-center"></div>
+    {% endif %}
+
+    <!-- Right: Logout (only when logged in) -->
+    <div class="header-right">
+      {% if session.get('user_id') %}
+        <a class="btn btn-danger btn-sm" href="{{ url_for('auth.logout') }}">Logout</a>
+      {% endif %}
+    </div>
   </header>
 
+  <!-- MAIN CONTENT -->
   <main>
     {% block content %}
-      <!-- Default content if no template is provided -->
     {% endblock %}
   </main>
 
+  <!-- FOOTER -->
   <footer>
     <p style="text-align: center; margin: 0;">
       Created by Omer-Shay Becker, Barbara Aleksandrov, and Kfir Moshe Nissim.

@@ -1,0 +1,14 @@
+section.menu {
+  & > .menu-buttons {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: start;
+
+    & > button {
+      flex: 0 1 auto;
+      margin: 0 auto 0;
+    }
+  }
+}

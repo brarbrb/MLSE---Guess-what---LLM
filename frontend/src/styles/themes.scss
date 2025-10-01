@@ -1,0 +1,47 @@
+:root {
+  --dark-blue: #0C2A49;
+  --blue3: #15569c;
+  --blue2: #197fea;
+  --blue: #2f9fe3;
+  --light-blue: #92c2f3;
+  --dark-orange: #6a3006;
+  --orange: #ef642b;
+  --light-orange: #f6af91;
+}
+
+body {
+  // Default theme.
+  --theme: black;
+  --off-theme: white;
+  --theme-blue: var(--dark-blue);
+  --off-theme-blue: var(--light-blue);
+
+  // Default themes based on browser preference.
+  @media (prefers-color-scheme: dark) {
+    --theme: black;
+    --off-theme: white;
+    --theme-blue: var(--dark-blue);
+    --off-theme-blue: var(--light-blue);
+  }
+  @media (prefers-color-scheme: light) {
+    --theme: white;
+    --off-theme: black;
+    --theme-blue: var(--light-blue);
+    --off-theme-blue: var(--dark-blue);
+  }
+
+  // Public Themes
+  &[theme="dark"] {
+    --theme: black;
+    --off-theme: white;
+    --theme-blue: var(--dark-blue);
+    --off-theme-blue: var(--light-blue);
+  }
+
+  &[theme="light"] {
+    --theme: white;
+    --off-theme: black;
+    --theme-blue: var(--light-blue);
+    --off-theme-blue: var(--dark-blue);
+  }
+}

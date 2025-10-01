@@ -27,7 +27,8 @@ CREATE TABLE Game (
   TotalRounds INTEGER NOT NULL,
   CurrentRound INTEGER DEFAULT 0,
   CurentLeaderID INTEGER REFERENCES "User"(UserID),
-  WinnerID INTEGER REFERENCES "User"(UserID)
+  WinnerID INTEGER REFERENCES "User"(UserID),
+  IsPrivate INTEGER DEFAULT 0
 );
 
 CREATE TABLE GameSettings (

@@ -3,7 +3,6 @@
 
 {% block styles %}
   {{ super() }}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
   <style>
     .center-wrap { min-height: 65vh; display: grid; place-items: center; }
     .card { text-align: center; padding: 2rem; border-radius: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.08); }
@@ -21,10 +20,11 @@
       <img class="big-logo" src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo">
       <h1>Guess What</h1>
       <p style="opacity:.8">A fast, fun word-guessing game.</p>
-      <div class="btn-row">
-        <a href="{{ url_for('auth.login_get') }}"><button class="btn btn-primary">Login</button></a>
-        <a href="{{ url_for('auth.signup_get') }}"><button class="btn btn-secondary">Sign up</button></a>
-      </div>
+<div class="btn-row">
+  <a class="btn btn-primary" href="{{ url_for('auth.login_get') }}">Login</a>
+  <a class="btn btn-secondary" href="{{ url_for('auth.signup_get') }}">Sign up</a>
+</div>
+
     </div>
   </section>
 {% endblock %}
