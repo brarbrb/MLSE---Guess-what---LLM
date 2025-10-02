@@ -40,20 +40,21 @@ class Game(Base):
     CurrentPlayersCount: Mapped[int] = mapped_column(Integer, default=1)
     TotalRounds: Mapped[int] = mapped_column(Integer, nullable=False)
     CurrentRound: Mapped[int] = mapped_column(Integer, default=0)
-    CurentLeaderID: Mapped[int | None] = mapped_column(ForeignKey("User.UserID"))
+    CurrentLeaderID: Mapped[int | None] = mapped_column(ForeignKey("User.UserID"))
     WinnerID: Mapped[int | None] = mapped_column(ForeignKey("User.UserID"))
     IsPrivate: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
     __table_args__ = (
         CheckConstraint("Status IN ('waiting','active','completed','cancelled')"),
-        CheckConstraint("MaxPlayers BETWEEN 3 AND 10"),
+        CheckConstraint("MaxPlayers BETWEEN 1 AND 10"),
     )
 
     creator = relationship("User", foreign_keys=[CreatorID])
     rounds = relationship("Round", back_populates="game", cascade="all, delete-orphan")
     players = relationship("PlayerGame", back_populates="game", cascade="all, delete-orphan")
     settings = relationship("GameSettings", back_populates="game", uselist=False, cascade="all, delete-orphan")
+    chat_messages = relationship("ChatMessage", cascade="all, delete-orphan", backref="game")
 
 # ---------- GameSettings (1:1 with Game) ----------
 class GameSettings(Base):
@@ -97,25 +98,27 @@ class Round(Base):
     RoundID: Mapped[int] = mapped_column(Integer, primary_key=True)
     GameID: Mapped[int] = mapped_column(ForeignKey("Game.GameID"), nullable=False)
     # Stored as JSON in SQLite (TEXT + JSON1)
-    Paricipants: Mapped[list | dict | None] = mapped_column("Paricipants", JSON, default=list)
+    Participants: Mapped[list] = mapped_column("Participants", JSON, default=list)
     RoundNumber: Mapped[int] = mapped_column(Integer, nullable=False)
-    RoundWinnerID: Mapped[int] = mapped_column(ForeignKey("User.UserID"), nullable=False)
+    RoundWinnerID: Mapped[int | None] = mapped_column(ForeignKey("User.UserID"), nullable=True, default=None)
     TargetWord: Mapped[str] = mapped_column(String(100), nullable=False)
     Description: Mapped[str | None] = mapped_column(Text, nullable=True)
     Guesses: Mapped[list] = mapped_column(JSON, default=list)
-    ForbiddenWords: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    ForbiddenWords: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     Hints: Mapped[list | None] = mapped_column(JSON, nullable=True)
-    StartTime: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    StartTime: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.utcnow, nullable=True)
     EndTime: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     MaxRoundTime: Mapped[int] = mapped_column(Integer, default=180)
     Status: Mapped[str] = mapped_column(String(20), default="active")
 
     __table_args__ = (
         UniqueConstraint("GameID", "RoundNumber"),
-        CheckConstraint("Status IN ('active','completed','timeout')"),
+        CheckConstraint("Status IN ('waiting_description','active','completed','timeout')"),
     )
 
     game = relationship("Game", back_populates="rounds")
+    guesses = relationship("Guess", cascade="all, delete-orphan", backref="round")
+
 
 # ---------- Guess ----------
 class Guess(Base):

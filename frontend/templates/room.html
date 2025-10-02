@@ -7,53 +7,83 @@
 
 {% block scripts %}
   {{ super() }}
-  <script src="{{ url_for('static', filename='js/room.js') }}"></script>
+  <script>
+    window.currentUser = {{ {"username": session.get("username","")} | tojson }};
+    try { localStorage.setItem('currentUser', JSON.stringify(window.currentUser)); } catch(e) {}
+  </script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" defer></script>
+  <script src="{{ url_for('static', filename='js/room.js') }}" defer></script>
 {% endblock %}
 
 {% block content %}
-  <article style="width: 80%; margin: auto;">
-    <section>
-      <h2>Game room</h2>
-      <div style="display: flex; justify-content: space-between;">
-        <div>
-          <ul id="players-list">
-            <li>
-              <span>Player 1:</span>
-              <span>0 points</span>
-            </li>
-          </ul>
+  <div class="room-wrap">
+    <!-- Left: round content -->
+    <section class="room-left">
+      <header class="round-header">
+        <h2 class="round-title">Game room</h2>
+        <div class="round-meta">
+          <span id="round-status" class="badge">waiting</span>
+          <span id="round-timer" class="timer" hidden>00:00</span>
         </div>
-        <div id="describer-section" style="visibility: hidden">
-          <h3>Your word is: Apple</h3>
-          <b>Forbidden words:</b>
-          <ul id="forbidden-words">
-            <li>Apple</li>
-            <li>fruit</li>
-            <li>red</li>
-            <li>green</li>
-            <li>tree</li>
-            <li>iphone</li>
-            <li>mac</li>
-            <li>ipad</li>
-            <li>earpods</li>
-            <li>newton</li>
-          </ul>
-           <form id="describer-form">
-             <label for="description-input">Enter Description: <input id="description-input" type="text"></label>
-             <input type="submit" value="Send Description">
-           </form>
-        </div>
-        <div id="guesser-section" style="visibility: hidden">
-          <h3>Try to guess the word</h3>
-          <div>
-          <b>Description:</b> <span id="current-description"></span>
-          </div>
-          <form id="guesser-form">
-            <label for="guess-input">Enter Your Guess: <input id="guess-input" type="text"></label>
-            <input type="submit" value="Guess">
-          </form>
-        </div>
+      </header>
+
+      <div class="round-body">
+        <h3 class="desc-label">Description</h3>
+        <p id="round-description" class="desc-text">—</p>
       </div>
+
+      <ul id="players-list" class="players">
+        <!-- filled by JS -->
+      </ul>
     </section>
-  </article>
+
+    <!-- Right: chat -->
+    <aside class="room-right">
+      <h3 class="chat-title">Chat</h3>
+      <div id="chat-list" class="chat-list"></div>
+      <form id="chat-form" class="chat-form" autocomplete="off">
+        <input id="chat-input" placeholder="Type your guess…" />
+        <button type="submit" class="btn">Send</button>
+      </form>
+    </aside>
+  </div>
+
+  <!-- MODALS -->
+  <div id="modal-overlay" class="modal-overlay" hidden></div>
+
+  <!-- Creator: describe -->
+  <div id="modal-describer" class="modal" hidden>
+    <h3>Your word</h3>
+    <div class="word-card">
+      <div><b>Target:</b> <span id="modal-target">—</span></div>
+      <div><b>Forbidden:</b>
+        <ul id="modal-forbidden"></ul>
+      </div>
+    </div>
+    <form id="describer-form" class="modal-form" autocomplete="off">
+      <label>Type your description</label>
+      <textarea id="description-input" rows="3" placeholder="Write a clear clue without forbidden words…"></textarea>
+      <div class="modal-actions">
+        <button type="submit" class="btn primary">Send description</button>
+      </div>
+    </form>
+    <p id="desc-error" class="error" hidden></p>
+  </div>
+
+  <!-- Players: waiting / reveal -->
+  <div id="modal-waiting" class="modal" hidden>
+    <h3 id="waiting-title">Waiting for description…</h3>
+    <p id="waiting-text" class="muted">The describer is preparing a clue.</p>
+  </div>
+
+  <!-- Winner -->
+  <div id="modal-winner" class="modal" hidden>
+    <h3>Round finished!</h3>
+    <p><b id="winner-name">Someone</b> guessed the word <b id="winner-word">???</b>.</p>
+    <p class="muted" id="winner-time"></p>
+    <div class="modal-actions">
+      <button id="btn-see-game" class="btn">See the game</button>
+      <a href="/menu" class="btn danger">Exit to menu</a>
+    </div>
+  </div>
 {% endblock %}

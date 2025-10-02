@@ -1,5 +1,6 @@
 PRAGMA foreign_keys = ON;
 
+-- ---------- User ----------
 CREATE TABLE "User" (
   UserID INTEGER PRIMARY KEY,
   Username VARCHAR(50) UNIQUE NOT NULL,
@@ -14,6 +15,7 @@ CREATE TABLE "User" (
   IsActive INTEGER DEFAULT 1
 );
 
+-- ---------- Game ----------
 CREATE TABLE Game (
   GameID INTEGER PRIMARY KEY,
   CreatorID INTEGER NOT NULL REFERENCES "User"(UserID),
@@ -22,15 +24,16 @@ CREATE TABLE Game (
   StartedAt TIMESTAMP,
   EndedAt TIMESTAMP,
   Status VARCHAR(20) DEFAULT 'waiting' CHECK (Status IN ('waiting','active','completed','cancelled')),
-  MaxPlayers INTEGER NOT NULL CHECK (MaxPlayers BETWEEN 3 AND 10),
+  MaxPlayers INTEGER NOT NULL CHECK (MaxPlayers BETWEEN 1 AND 10),
   CurrentPlayersCount INTEGER DEFAULT 1,
   TotalRounds INTEGER NOT NULL,
   CurrentRound INTEGER DEFAULT 0,
-  CurentLeaderID INTEGER REFERENCES "User"(UserID),
+  CurrentLeaderID INTEGER REFERENCES "User"(UserID),
   WinnerID INTEGER REFERENCES "User"(UserID),
   IsPrivate INTEGER DEFAULT 0
 );
 
+-- ---------- GameSettings ----------
 CREATE TABLE GameSettings (
   GameID INTEGER PRIMARY KEY REFERENCES Game(GameID),
   RoundTimeSeconds INTEGER DEFAULT 180,
@@ -40,6 +43,7 @@ CREATE TABLE GameSettings (
   MaxHintsPerRound INTEGER DEFAULT 3
 );
 
+-- ---------- PlayerGame ----------
 CREATE TABLE PlayerGame (
   PlayerGameID INTEGER PRIMARY KEY,
   UserID INTEGER NOT NULL REFERENCES "User"(UserID),
@@ -55,24 +59,26 @@ CREATE TABLE PlayerGame (
   UNIQUE(UserID, GameID)
 );
 
+-- ---------- Round ----------
 CREATE TABLE Round (
   RoundID INTEGER PRIMARY KEY,
   GameID INTEGER NOT NULL REFERENCES Game(GameID),
-  Paricipants JSON DEFAULT '[]',
+  Participants JSON DEFAULT '[]',
   RoundNumber INTEGER NOT NULL,
-  RoundWinnerID INTEGER NOT NULL REFERENCES "User"(UserID),
+  RoundWinnerID INTEGER REFERENCES "User"(UserID),
   TargetWord VARCHAR(100) NOT NULL,
   Description TEXT,
   Guesses JSON DEFAULT '[]',
-  ForbiddenWords JSON,
+  ForbiddenWords JSON NOT NULL DEFAULT '[]',
   Hints JSON,
-  StartTime TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  StartTime TIMESTAMP,                         -- nullable, no default
   EndTime TIMESTAMP,
   MaxRoundTime INTEGER DEFAULT 180,
-  Status VARCHAR(20) DEFAULT 'active' CHECK (Status IN ('active','completed','timeout')),
+  Status VARCHAR(20) DEFAULT 'active' CHECK (Status IN ('waiting_description','active','completed','timeout')),
   UNIQUE(GameID, RoundNumber)
 );
 
+-- ---------- Guess ----------
 CREATE TABLE Guess (
   GuessID INTEGER PRIMARY KEY,
   GameID INTEGER NOT NULL REFERENCES Game(GameID),
@@ -81,10 +87,11 @@ CREATE TABLE Guess (
   GuessText VARCHAR(100) NOT NULL,
   GuessTime TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   ResponseTimeSeconds REAL NOT NULL,
-  IsCorrect INTEGER DEFAULT 0,
-  PointsAwarded INTEGER DEFAULT 0
+  PointsAwarded INTEGER DEFAULT 0,
+  IsCorrect INTEGER DEFAULT 0
 );
 
+-- ---------- ChatMessage ----------
 CREATE TABLE ChatMessage (
   MessageID INTEGER PRIMARY KEY,
   GameID INTEGER NOT NULL REFERENCES Game(GameID),

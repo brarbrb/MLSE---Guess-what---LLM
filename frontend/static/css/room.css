@@ -1,0 +1,41 @@
+/* layout */
+.room-wrap { display:flex; gap:24px; padding:24px; max-width:1100px; margin:0 auto; }
+.room-left, .room-right { background:#9fc3eb55; border-radius:12px; padding:16px; }
+.room-left { flex:1; min-height:60vh; }
+.room-right { flex:1; display:flex; flex-direction:column; min-height:60vh; }
+
+.round-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.round-title { margin:0; }
+.badge { background:#123a50; color:#fff; padding:4px 8px; border-radius:999px; font-size:12px; }
+.timer { font-variant-numeric: tabular-nums; margin-left:8px; }
+
+.round-body { margin:12px 0 20px; }
+.desc-label { margin:0 0 6px; }
+.desc-text { background:#fff; padding:12px; border-radius:8px; min-height:72px; }
+
+.players { margin-top:20px; list-style:disc; padding-left:20px; }
+.players li { margin:6px 0; }
+
+.chat-title { margin-top:0; }
+.chat-list { flex:1; overflow-y:auto; background:#fff; border-radius:8px; padding:10px; }
+.chat-item { margin:6px 0; }
+.chat-item .u { font-weight:600; margin-right:6px; }
+.chat-form { display:flex; gap:8px; margin-top:10px; }
+.chat-form input { flex:1; padding:10px; border-radius:8px; border:1px solid #bbb; }
+.btn { padding:10px 14px; border:none; border-radius:8px; background:#1d4f6a; color:#fff; cursor:pointer; }
+.btn.primary { background:#0c7bd6; }
+.btn.danger { background:#b33; color:#fff; text-decoration:none; }
+
+/* modals */
+.modal-overlay { position:fixed; inset:0; background:#0008; z-index:50; }
+.modal { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%) scale(1); background:#f7fbff; width:min(560px,92vw); padding:20px; border-radius:14px; box-shadow:0 20px 60px #0005; z-index:60; }
+.modal h3 { margin-top:0; }
+.word-card { background:#fff; border:1px solid #e5eef6; border-radius:10px; padding:10px; margin-bottom:12px; }
+.modal-form textarea { width:100%; resize:vertical; padding:10px; border-radius:10px; border:1px solid #c8d7e6; background:#fff; }
+.modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
+.error { color:#b00; margin-top:8px; }
+.muted { color:#567; }
+
+/* small fade for waiting -> description */
+.fade-in { animation: fadein .4s ease-out both; }
+@keyframes fadein { from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:none} }

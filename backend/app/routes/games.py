@@ -1,13 +1,22 @@
 from flask import Blueprint, request, jsonify, session
 from ...database.db import SessionLocal
-from ...database.models import User, Game, GameSettings, PlayerGame
+from ...database.models import User, Game, GameSettings, PlayerGame, Round
 from sqlalchemy import func
-import random, string, datetime as dt
+from ...extensions import socketio
+
+import random
+import string
+import datetime as dt
+import json
+
+# Word source (your mock for now)
+from ...lm_core.word_loader import WordLoader
 
 games_bp = Blueprint("games", __name__)
 
 # --- helpers ---
-def _db(): return SessionLocal()
+def _db():
+    return SessionLocal()
 
 def _require_login():
     uid = session.get("user_id")
@@ -16,14 +25,15 @@ def _require_login():
     return uid, None
 
 def _gen_code(n=6):
-    # 6-char uppercase code (unique)
+    # 6-char uppercase code
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=n))
 
 # --- Create game (+ settings) ---
 @games_bp.post("")
 def create_game():
     uid, err = _require_login()
-    if err: return err
+    if err:
+        return err
     data = request.get_json(force=True)
 
     # payload: { round_time, difficulty, allow_hints, max_hints, max_players, is_private, total_rounds }
@@ -35,7 +45,7 @@ def create_game():
     total_rounds = int(data.get("total_rounds", 6))
     is_private   = bool(data.get("is_private", False))
 
-    if difficulty not in ("easy","medium","hard"):
+    if difficulty not in ("easy", "medium", "hard"):
         return jsonify(error="bad_difficulty"), 400
     if not (3 <= max_players <= 10):
         return jsonify(error="bad_max_players"), 400
@@ -48,7 +58,7 @@ def create_game():
             return jsonify(error="user_missing"), 400
 
         # unique GameCode
-        for _ in range(10):
+        for _ in range(12):
             code = _gen_code(6)
             if not db.query(Game).filter_by(GameCode=code).first():
                 break
@@ -98,7 +108,8 @@ def create_game():
 @games_bp.post("/join_by_code")
 def join_by_code():
     uid, err = _require_login()
-    if err: return err
+    if err:
+        return err
     code = (request.get_json(force=True).get("game_code") or "").upper().strip()
     if not code:
         return jsonify(error="code_required"), 400
@@ -128,7 +139,8 @@ def join_by_code():
 @games_bp.post("/join_random")
 def join_random():
     uid, err = _require_login()
-    if err: return err
+    if err:
+        return err
     db = _db()
     try:
         game = (
@@ -157,7 +169,8 @@ def join_random():
 @games_bp.get("/<int:game_id>/lobby")
 def lobby(game_id: int):
     uid, err = _require_login()
-    if err: return err
+    if err:
+        return err
     db = _db()
     try:
         game = db.query(Game).get(game_id)
@@ -180,23 +193,58 @@ def lobby(game_id: int):
     finally:
         db.close()
 
-# --- Start game (creator only) ---
+# --- Start game (creator only) + create Round + word set, then return room_url ---
 @games_bp.post("/<int:game_id>/start")
 def start_game(game_id: int):
     uid, err = _require_login()
-    if err: return err
+    if err:
+        return err
+
     db = _db()
     try:
         game = db.query(Game).get(game_id)
-        if not game: return jsonify(error="game_not_found"), 404
-        if game.CreatorID != uid: return jsonify(error="not_creator"), 403
-        if game.Status != "waiting": return jsonify(error="bad_status"), 400
+        if not game:
+            return jsonify(error="game_not_found"), 404
+        if game.CreatorID != uid:
+            return jsonify(error="not_creator"), 403
+        if game.Status != "waiting":
+            return jsonify(error="bad_status"), 400
+
+        # Word set
+        wl = WordLoader()
+        target = wl.generate_target_word()
+        if isinstance(target, (list, tuple)) and target:
+            target = target[0]
+        target = str(target or "")
+
+        forbidden_list = wl.generate_forbidden_list(target) or []
+        if not isinstance(forbidden_list, (list, tuple)):
+            forbidden_list = [str(forbidden_list)]
+        forbidden_list = list(forbidden_list)
+
+        round_rec = Round(
+            GameID=game.GameID,
+            RoundNumber=1,
+            RoundWinnerID=None,            # now nullable ✔
+            TargetWord=target,
+            Description=None,              # no description yet
+            ForbiddenWords=forbidden_list, # JSON column expects a Python list
+            Hints=[],
+            StartTime=None,                # set when description is accepted
+            EndTime=None,
+            MaxRoundTime=game.settings.RoundTimeSeconds if game.settings else 180,
+            Status="waiting_description",  # clearer initial state
+        )
+        db.add(round_rec)
+
         game.Status = "active"
         game.StartedAt = dt.datetime.utcnow()
         db.commit()
-        return jsonify(ok=True)
+
+        return jsonify(ok=True, room_url=f"/room/{game.GameID}")
     except Exception as e:
         db.rollback()
+        import traceback; traceback.print_exc()
         return jsonify(error="start_failed", detail=str(e)), 400
     finally:
         db.close()

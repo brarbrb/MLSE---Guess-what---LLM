@@ -5,6 +5,8 @@ from datetime import timedelta
 from .database.db import engine, Base
 from .database import models
 from .app import register_blueprints, register_error_handlers
+from .extensions import socketio
+from .app import sockets
 
 ROOT = Path(__file__).resolve().parents[1]
 FRONTEND_STATIC = ROOT / "frontend" / "static"
@@ -44,4 +46,7 @@ def create_app() -> Flask:
     return app
 
 if __name__ == "__main__":
-    create_app().run(debug=True)
+    # create_app().run(debug=True)
+    app = create_app()
+    socketio.init_app(app)
+    socketio.run(app, debug=True)

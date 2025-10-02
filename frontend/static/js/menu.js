@@ -170,9 +170,11 @@
       }
 
       // If game started elsewhere, redirect (hook up your game room route here)
-      if (data.status === "active") {
-        // window.location.href = `/room/${currentGame.id}`;
-      }
+    if (data.status === "active" && currentGame) {
+      if (lobbyTimer) { clearInterval(lobbyTimer); lobbyTimer = null; }
+      window.location.href = `/room/${currentGame.id}`;
+      return; // stop rendering further
+    }
     }
 
     function startLobbyPolling() {
@@ -192,11 +194,15 @@
     btnStart?.addEventListener("click", async () => {
       if (!currentGame?.isCreator) return;
 
-      const res  = await fetch(`/api/games/${currentGame.id}/start`, { method: "POST" });
-      const data = await res.json();
-      if (!res.ok || !data.ok) { alert(data.error || "Start failed"); return; }
-
-      // window.location.href = `/room/${currentGame.id}`;
+      const res = await fetch(`/api/games/${currentGame.id}/start`, { method: 'POST' });
+    const data = await res.json();
+    if (data.ok && data.room_url) {
+      window.location.href = data.room_url;
+    } else {
+      alert(data.error || 'Failed to start');
+    }
     });
+
+    
   }
 })();
