@@ -5,25 +5,16 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/menu.css') }}">
 {% endblock %}
 
-{% block scripts %}
-  <script>
-    window.CURRENT_USER = { id: {{ session.get('user_id') or 'null' }}, username: "{{ session.get('username','') }}" };
-  </script>
-  <script src="{{ url_for('static', filename='js/menu.js') }}"></script>
-{% endblock %}
-
-
 {% block content %}
   <section class="menu-wrap">
     <!-- Left column -->
-<div class="menu-left">
-  <div class="menu-card">
-    <button class="btn btn-primary menu-btn" id="btn-new">Create new game</button>
-    <button class="btn btn-secondary menu-btn" id="btn-join">Join existing game</button>
-    <button class="btn btn-ghost menu-btn" id="btn-profile" disabled>Profile (soon)</button>
-  </div>
-</div>
-
+    <div class="menu-left">
+      <div class="menu-card">
+        <button class="btn btn-primary menu-btn" id="btn-new">Create new game</button>
+        <button class="btn btn-secondary menu-btn" id="btn-join">Join existing game</button>
+        <button class="btn btn-ghost menu-btn" id="btn-profile" disabled>Profile (soon)</button>
+      </div>
+    </div>
 
     <!-- Right column (blank for now) -->
     <div class="menu-right">
@@ -111,4 +102,14 @@
       <button class="btn" data-close>Close</button>
     </div>
   </div>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    window.CURRENT_USER = {
+      id: {{ session.get('user_id') or 'null' }},
+      username: "{{ session.get('username','') }}"
+    };
+  </script>
+  <script src="{{ url_for('static', filename='js/menu.js') }}" defer></script>
 {% endblock %}

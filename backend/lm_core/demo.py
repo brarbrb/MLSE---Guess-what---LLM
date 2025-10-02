@@ -6,7 +6,7 @@ from generator import ForbiddenAPI, GenConfig
 from vocabulary import WordSampler
 
 
-# def build_vocab(n=80_000, min_len=3, max_len=14): #when submitting put n-larger #TODO: delete
+# def build_vocab(n=80_000, min_len=3, max_len=14): #when submitting put n-larger 
 #     raw = top_n_list("en", n=n)
 #     vocab = [w for w in raw if w.isalpha() and min_len <= len(w) <= max_len]
 #     # dedupe, preserve order
@@ -18,7 +18,7 @@ from vocabulary import WordSampler
 
 def main():
     print("[1/4] Building vocab…")
-    sampler = WordSampler(seed=42) #TODO: remove before submission. 
+    sampler = WordSampler(seed=42) #TODO: remove seed before submission. ?
     vocab = sampler.get_vocab()
 
     print("[2/4] Embedding & indexing (FAISS)…")
