@@ -17,11 +17,19 @@
       </div>
     </div>
 
-    <!-- Right column (blank for now) -->
+    <!-- Right column: Active games grid -->
     <div class="menu-right">
-      <!-- reserved for future content -->
+      <div class="menu-card">
+        <div class="menu-card-header" style="display:flex; align-items:center; justify-content:space-between; gap:.75rem;">
+          <h3 style="margin:0;">Your active games</h3>
+          <button id="btn-past" class="btn btn-secondary btn-sm">Show past games</button>
+        </div>
+
+        <div id="my-active-games" class="games-grid" style="margin-top:.75rem;">
+          <p class="muted" id="active-loading">Loading…</p>
+        </div>
+      </div>
     </div>
-  </section>
 
   <!-- Panels (overlay) -->
   <div class="overlay" id="overlay" hidden></div>

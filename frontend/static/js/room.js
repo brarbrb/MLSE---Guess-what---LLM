@@ -104,8 +104,13 @@
     socket.on("round:won", (data)=> onWinnerLive(data));
     // send chat guesses through socket too (optional)
     $("#chat-form")?.addEventListener("submit", (e)=>{
-      const t=$("#chat-input").value.trim(); if(!t) return;
+      e.preventDefault();
+      if (state.isCreator) return;
+      const t = $("#chat-input").value.trim();
+      if (!t) return;
+      // addChatLine(state.user?.username || "me", t); // keep commented if server echoes back
       socket.emit("chat:send", { game_id: state.gameId, text: t });
+      $("#chat-input").value = ""; // clear input
     });
   }
 
@@ -113,6 +118,26 @@
   function applySnapshot(d, {from}={}){
     // who is creator
     state.isCreator = (d.turn && (d.turn === (state.user?.username||"")));
+    const inp = $("#chat-input");
+    const btn = $("#chat-send");
+    if (inp) inp.disabled = !!state.isCreator;
+    if (btn) btn.disabled = !!state.isCreator;
+
+    // Optional: small note at the top of the chat when blocked
+    let note = document.getElementById("creator-chat-note");
+    if (state.isCreator) {
+      if (!note) {
+        note = document.createElement("div");
+        note.id = "creator-chat-note";
+        note.className = "muted";
+        note.style.marginBottom = "6px";
+        note.textContent = "Creators can't chat while describing.";
+        const chat = $("#chat-list")?.parentElement || $("#chat");
+        if (chat) chat.insertBefore(note, chat.firstChild);
+      }
+    } else if (note) {
+      note.remove();
+    }
     // players & scores
     renderPlayers(d.players || [], d.scores || {});
     // status
@@ -160,13 +185,24 @@
     setTimeout(()=> hideModal(modals.waiting), 3000);
   }
 
-  function onWinnerLive(data){
-    $("#winner-name").textContent = data?.winner || "Someone";
-    $("#winner-word").textContent = data?.word || "";
-    $("#winner-time").textContent = (typeof data?.elapsedMs === "number")
-      ? `Time: ${(data.elapsedMs/1000).toFixed(1)}s` : "";
-    showModal(modals.winner);
-  }
+function onWinnerLive(data){
+  // stop & hide the running round timer
+  startTimer(null);
+
+  // mark the round as completed in the UI
+  setBadge("completed");
+
+  $("#winner-name").textContent = data?.winner || "Someone";
+  $("#winner-word").textContent = data?.word || "";
+  $("#winner-time").textContent = (typeof data?.elapsedMs === "number")
+    ? `Time: ${(data.elapsedMs/1000).toFixed(1)}s` : "";
+
+  // make sure any other modals are closed
+  hideModal(modals.describer);
+  hideModal(modals.waiting);
+
+  showModal(modals.winner);
+}
 
   // ---------- FORMS ----------
   function setupForms(){
@@ -189,19 +225,6 @@
       setBadge("active");
       // players will also get socket event if wired
     });
-
-    // chat/guess form (REST fallback; sockets also send above)
-    $("#chat-form")?.addEventListener("submit", async (e)=>{
-      e.preventDefault();
-      const inp=$("#chat-input"); const t=inp.value.trim(); if(!t) return;
-      addChatLine(state.user?.username||"me", t); // optimistic
-      const res = await sendGuess(t);
-      if (res?.correct) {
-        onWinnerLive({ winner: state.user?.username||"You", word: res.word, elapsedMs: res.elapsedMs });
-      }
-      inp.value="";
-    });
-
     $("#btn-see-game")?.addEventListener("click", ()=> hideModal(modals.winner));
   }
 

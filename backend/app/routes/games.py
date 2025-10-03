@@ -248,3 +248,68 @@ def start_game(game_id: int):
         return jsonify(error="start_failed", detail=str(e)), 400
     finally:
         db.close()
+
+# --- My active / past games for right panel ---
+
+@games_bp.get("/my_active")
+def my_active():
+    uid, err = _require_login()
+    if err:
+        return err
+
+    db = _db()
+    try:
+        rows = (
+            db.query(Game)
+              .join(PlayerGame, PlayerGame.GameID == Game.GameID)
+              .filter(PlayerGame.UserID == uid)
+              .filter(Game.Status.in_(["waiting", "active"]))
+              .order_by(Game.CreatedAt.desc())
+              .all()
+        )
+        out = []
+        for g in rows:
+            out.append({
+                "id": g.GameID,
+                "code": g.GameCode,
+                "players": getattr(g, "CurrentPlayersCount", 0) or 0,
+                "max": getattr(g, "MaxPlayers", None),
+                "createdAt": g.CreatedAt.isoformat() + "Z" if getattr(g, "CreatedAt", None) else None,
+                "startedAt": g.StartedAt.isoformat() + "Z" if getattr(g, "StartedAt", None) else None,
+                "status": g.Status,
+            })
+        return jsonify(out)
+    finally:
+        db.close()
+
+
+@games_bp.get("/my_past")
+def my_past():
+    uid, err = _require_login()
+    if err:
+        return err
+
+    db = _db()
+    try:
+        rows = (
+            db.query(Game)
+              .join(PlayerGame, PlayerGame.GameID == Game.GameID)
+              .filter(PlayerGame.UserID == uid)
+              .filter(Game.Status == "completed")
+              .order_by(Game.CreatedAt.desc())
+              .all()
+        )
+        out = []
+        for g in rows:
+            out.append({
+                "id": g.GameID,
+                "code": g.GameCode,
+                "players": getattr(g, "CurrentPlayersCount", 0) or 0,
+                "max": getattr(g, "MaxPlayers", None),
+                "createdAt": g.CreatedAt.isoformat() + "Z" if getattr(g, "CreatedAt", None) else None,
+                "endedAt": g.EndedAt.isoformat() + "Z" if getattr(g, "EndedAt", None) else None,
+                "status": g.Status,
+            })
+        return jsonify(out)
+    finally:
+        db.close()

@@ -192,7 +192,9 @@ def put_guess(game_id: int):
         game = db.query(Game).get(game_id)
         if not game:
             return jsonify(error="game_not_found"), 404
-
+        if uid == game.CreatorID:
+            return jsonify(error="creator_cannot_guess"), 403
+        
         rnd = (
             db.query(Round)
             .filter_by(GameID=game_id)
@@ -230,12 +232,24 @@ def put_guess(game_id: int):
         db.add(g)
 
         if correct and rnd.Status != "completed" and (rnd.RoundWinnerID is None):
+            # finalize the round
             rnd.RoundWinnerID = uid
             rnd.EndTime = now
             rnd.Status = "completed"
+            # (optional) also mark game completed if single-round
+            # game.Status = "completed"
+
             db.commit()
 
             winner_name = db.query(User.Username).filter(User.UserID == uid).scalar()
+
+            # ⬇️ EMIT ONLY ON CORRECT
+            _emit("round:won", {
+                "winner": winner_name,
+                "word": rnd.TargetWord,
+                "elapsedMs": elapsed_ms
+            }, game_id)
+
             return jsonify(
                 correct=True,
                 message="🎉 Correct! You won!",
@@ -244,14 +258,10 @@ def put_guess(game_id: int):
                 word=rnd.TargetWord
             )
         else:
+            # incorrect guess: just store and return
             db.commit()
-            winner_name = db.query(User.Username).filter(User.UserID == uid).scalar()
-            _emit("round:won", {
-                "winner": winner_name,
-                "word": rnd.TargetWord,
-                "elapsedMs": elapsed_ms
-            }, game_id)
             return jsonify(correct=False, message="Nope, try again")
+
     except Exception as e:
         db.rollback()
         return jsonify(error="guess_failed", detail=str(e)), 400

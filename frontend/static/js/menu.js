@@ -203,6 +203,77 @@
     }
     });
 
-    
+        // ---------- Active games (right panel) ----------
+
+    async function _fetchJSON(url) {
+      const r = await fetch(url, { credentials: 'same-origin' });
+      if (!r.ok) throw new Error(await r.text());
+      return r.json();
+    }
+
+    function _fmtElapsedMs(ms) {
+      if (typeof ms !== 'number' || ms < 0) return '—';
+      const m = Math.floor(ms / 60000).toString().padStart(2, '0');
+      const s = Math.floor((ms % 60000) / 1000).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    async function loadMyActiveGames() {
+      const grid = document.getElementById('my-active-games');
+      if (!grid) return;
+
+      grid.innerHTML = `<p class="muted">Loading…</p>`;
+
+      try {
+        // expects backend /api/games/my_active
+        const data = await _fetchJSON('/api/games/my_active'); // [{id, code, players, max, createdAt, startedAt, status}]
+        if (!Array.isArray(data) || data.length === 0) {
+          grid.innerHTML = `<p class="muted">No active games yet.</p>`;
+          return;
+        }
+
+        grid.innerHTML = '';
+        const now = Date.now();
+
+        data.forEach(g => {
+          const t0 = g.startedAt ? Date.parse(g.startedAt) : (g.createdAt ? Date.parse(g.createdAt) : null);
+          const elapsed = t0 ? _fmtElapsedMs(now - t0) : '—';
+
+          const card = document.createElement('div');
+          card.className = 'game-card';
+          card.innerHTML = `
+            <div class="code">${g.code || g.id}</div>
+            <div class="meta">${g.players ?? '0'}/${g.max ?? '—'} • ${elapsed}</div>
+          `;
+          card.addEventListener('click', () => {
+            window.location.href = '/room/' + g.id;
+          });
+          grid.appendChild(card);
+        });
+      } catch (e) {
+        grid.innerHTML = `<p class="error">Failed to load games.</p>`;
+        console.error(e);
+      }
+    }
+
+    function setupPastBtn() {
+      const btn = document.getElementById('btn-past');
+      if (!btn) return;
+      btn.addEventListener('click', async () => {
+        try {
+          // expects backend /api/games/my_past
+          const data = await _fetchJSON('/api/games/my_past'); // array
+          alert(`You have ${Array.isArray(data) ? data.length : 0} past game(s).`);
+        } catch (e) {
+          alert('Failed to load past games.');
+          console.error(e);
+        }
+      });
+    }
+
+    // Kick off right panel population on page load
+    loadMyActiveGames();
+    setupPastBtn();
+
   }
 })();

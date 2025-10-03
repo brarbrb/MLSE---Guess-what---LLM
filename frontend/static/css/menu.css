@@ -130,3 +130,33 @@
 }
 .join-divider{ background:#eee; height:100%; width:1px; }
 .join-right{ display:grid; gap:8px; }
+
+
+/* Right column grid for active games */
+.games-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: .75rem;
+}
+
+.game-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: .75rem;
+  cursor: pointer;
+  transition: box-shadow .15s ease, transform .15s ease;
+  background: #fff;
+}
+.game-card:hover {
+  box-shadow: 0 6px 20px rgba(0,0,0,.08);
+  transform: translateY(-1px);
+}
+.game-card .code {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+.game-card .meta {
+  color: #6b7280;
+  font-size: .9rem;
+  margin-top: .2rem;
+}

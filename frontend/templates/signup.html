@@ -39,3 +39,25 @@
     </form>
   </article>
 {% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  {% if not session.get('user_id') %}
+  <script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const actions = document.querySelector('.site-header .header-right');
+    if (!actions) return;
+
+    // Avoid duplicates if the template re-renders
+    if (actions.querySelector('[data-login-injected]')) return;
+
+    const a = document.createElement('a');
+    a.href = "{{ url_for('auth.login_get') }}";
+    a.textContent = "Login";
+    a.className = "btn btn-primary btn-sm"; // same size as Logout, but blue
+    a.setAttribute('data-login-injected', '1');
+    actions.appendChild(a);
+  });
+  </script>
+  {% endif %}
+{% endblock %}
