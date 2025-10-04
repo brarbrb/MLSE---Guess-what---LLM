@@ -18,17 +18,29 @@ def menu():
     return render_template("menu.html")
 
 @pages_bp.get("/room/<int:game_id>")
+@pages_bp.get("/room/<int:game_id>/<int:round_no>")
 @login_required
-def room(game_id: int):
+def room(game_id: int, round_no: int | None = None):
     uid = session["user_id"]
     db = SessionLocal()
     try:
-        game = db.query(Game).get(game_id)
-        if not game:
-            abort(404)
-        in_game = db.query(PlayerGame).filter_by(UserID=uid, GameID=game_id).first()
-        if not in_game:
-            return redirect(url_for("pages.menu"))
-        return render_template("room.html")
+      game = db.query(Game).get(game_id)
+      if not game:
+          abort(404)
+      in_game = db.query(PlayerGame).filter_by(UserID=uid, GameID=game_id).first()
+      if not in_game:
+          return redirect(url_for("pages.menu"))
+      # Same template in both cases; JS reads game_id/round_no from URL
+      return render_template("room.html")
     finally:
-        db.close()
+      db.close()
+      
+@pages_bp.get("/games/past")
+@login_required
+def past_games_page():
+    return render_template("past_games.html")
+
+@pages_bp.get("/profile")
+@login_required
+def profile_page():
+    return render_template("profile.html")

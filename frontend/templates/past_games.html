@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Past games — Guess What{% endblock %}
+
+{% block styles %}
+  {{ super() }} {# main.css already loaded in base.html #}
+{% endblock %}
+
+{% block content %}
+  <section class="pg-wrap">
+    <div class="pg-header">
+      <h2 style="margin:0;">Your past games</h2>
+      <!-- Back to menu button (top-right of the page content) -->
+      <a class="btn btn-secondary btn-sm" href="{{ url_for('pages.menu') }}">Back to menu</a>
+    </div>
+
+    <div id="past-grid" class="games-grid">
+      <p class="muted" id="past-loading">Loading…</p>
+    </div>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script>
+    function fmtDur(sec){
+      if (sec == null) return '—';
+      const m = Math.floor(sec/60), s = sec%60;
+      return m + 'm ' + s + 's';
+    }
+    function safe(x){ return x==null ? '—' : x; }
+
+    document.addEventListener('DOMContentLoaded', async ()=>{
+      const grid = document.getElementById('past-grid');
+      const loading = document.getElementById('past-loading');
+
+      try {
+        const r = await fetch('/api/games/my_past');
+        const data = await r.json().catch(()=>({}));
+        if (!r.ok || data.ok === false) throw new Error(data.error || 'Failed to load');
+
+        const games = data.games || [];
+        grid.innerHTML = '';
+        if (!games.length){
+          grid.innerHTML = '<p class="muted">No past games yet.</p>';
+          return;
+        }
+
+        games.forEach(g=>{
+          const a = document.createElement('a');
+          a.href = `/room/${g.game_id}/1?review=1`;   // open review mode
+          a.className = 'game-card';
+          a.innerHTML = `
+            <h4>Code: <b>${g.game_code}</b></h4>
+            <div class="game-meta">
+              <div>Players: ${g.players_count}</div>
+              <div>Rounds: ${g.total_rounds}</div>
+              <div>Duration: ${fmtDur(g.duration_sec)}</div>
+              <div>Winner: ${safe(g.winner)}</div>
+            </div>
+            <div class="game-actions">
+              <span class="muted">Ended: ${g.ended_at ? new Date(g.ended_at).toLocaleString() : '—'}</span>
+              <span class="btn btn-primary btn-sm">Review</span>
+            </div>
+          `;
+          grid.appendChild(a);
+        });
+      } catch(e){
+        grid.innerHTML = '<p class="muted">Failed to load past games.</p>';
+      } finally {
+        loading?.remove();
+      }
+    });
+  </script>
+{% endblock %}

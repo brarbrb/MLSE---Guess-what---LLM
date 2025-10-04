@@ -256,24 +256,7 @@
       }
     }
 
-    function setupPastBtn() {
-      const btn = document.getElementById('btn-past');
-      if (!btn) return;
-      btn.addEventListener('click', async () => {
-        try {
-          // expects backend /api/games/my_past
-          const data = await _fetchJSON('/api/games/my_past'); // array
-          alert(`You have ${Array.isArray(data) ? data.length : 0} past game(s).`);
-        } catch (e) {
-          alert('Failed to load past games.');
-          console.error(e);
-        }
-      });
-    }
-
     // Kick off right panel population on page load
     loadMyActiveGames();
-    setupPastBtn();
-
   }
 })();

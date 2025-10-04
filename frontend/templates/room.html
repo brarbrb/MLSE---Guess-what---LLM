@@ -88,13 +88,24 @@
   </div>
 
   <!-- Winner -->
-  <div id="modal-winner" class="modal" hidden>
-    <h3>Round finished!</h3>
-    <p><b id="winner-name">Someone</b> guessed the word <b id="winner-word">???</b>.</p>
-    <p class="muted" id="winner-time"></p>
-    <div class="modal-actions">
-      <button id="btn-see-game" class="btn">See the game</button>
-      <a href="/menu" class="btn danger">Exit to menu</a>
+    <div id="modal-winner" class="modal" hidden>
+      <h3>Round finished!</h3>
+      <p><b id="winner-name">Someone</b> guessed the word <b id="winner-word">???</b>.</p>
+      <p class="muted" id="winner-time"></p>
+
+      <!-- ADD THIS: used only on the last round -->
+      <div id="winner-final-results" hidden></div>
+
+      <div class="modal-actions">
+        <button id="btn-see-game" class="btn">See the game</button>
+        <a href="/menu" class="btn danger">Exit to menu</a>
+      </div>
     </div>
   </div>
+  <!-- Review navigation (only visible in ?review=1) -->
+<div id="review-nav" class="review-nav" hidden>
+  <button id="review-prev" class="btn">&larr; Previous round</button>
+  <button id="review-next" class="btn" style="float:right">Next round &rarr;</button>
+</div>
+
 {% endblock %}

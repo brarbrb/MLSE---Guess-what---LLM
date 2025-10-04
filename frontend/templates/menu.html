@@ -13,7 +13,7 @@
       <div class="menu-card">
         <button class="btn btn-primary menu-btn" id="btn-new">Create new game</button>
         <button class="btn btn-secondary menu-btn" id="btn-join">Join existing game</button>
-        <button class="btn btn-ghost menu-btn" id="btn-profile" disabled>Profile (soon)</button>
+        <button class="btn btn-ghost menu-btn" id="btn-profile" onclick="location.href='/profile'">Profile</button>
       </div>
     </div>
 
@@ -22,7 +22,7 @@
       <div class="menu-card">
         <div class="menu-card-header" style="display:flex; align-items:center; justify-content:space-between; gap:.75rem;">
           <h3 style="margin:0;">Your active games</h3>
-          <button id="btn-past" class="btn btn-secondary btn-sm">Show past games</button>
+            <a id="btn-past" class="btn btn-secondary btn-sm" href="/games/past">Show past games</a>
         </div>
 
         <div id="my-active-games" class="games-grid" style="margin-top:.75rem;">

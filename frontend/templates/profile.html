@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Profile — Guess What{% endblock %}
+
+{% block styles %}
+  {{ super() }} {# main.css already loaded #}
+{% endblock %}
+
+{% block content %}
+  <section class="profile-wrap">
+    <div class="profile-header">
+      <h2 style="margin:0;">Your profile</h2>
+      <a class="btn btn-secondary btn-sm" href="{{ url_for('pages.menu') }}">Back to menu</a>
+    </div>
+
+    <div class="kpis" id="kpis">
+      <!-- totals will be injected -->
+    </div>
+
+    <div class="profile-grid" style="margin-top:1rem;">
+      <div class="stat-card">
+        <h3>Top 3 fastest guesses</h3>
+        <ol id="fastest" class="stat-list">
+          <li class="muted">Loading…</li>
+        </ol>
+      </div>
+
+      <div class="stat-card">
+        <h3>Top 3 hardest words (longest time)</h3>
+        <ol id="hardest" class="stat-list">
+          <li class="muted">Loading…</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script>
+    function fmtSec(x){
+      if (x == null) return '—';
+      const s = Math.round(Number(x));
+      return s + 's';
+    }
+    document.addEventListener('DOMContentLoaded', async ()=>{
+      const fastestEl = document.getElementById('fastest');
+      const hardestEl = document.getElementById('hardest');
+      const kpis = document.getElementById('kpis');
+
+      try {
+        const r = await fetch('/api/profile/summary');
+        const data = await r.json();
+        if (!r.ok || data.ok === false) throw new Error(data.error || 'Failed');
+
+        // KPIs
+        kpis.innerHTML = `
+          <span class="kpi">Total games: ${data.totals?.total_games ?? 0}</span>
+          <span class="kpi">Total score: ${data.totals?.total_score ?? 0}</span>
+        `;
+
+        // Fastest
+        if (!data.fastest?.length){
+          fastestEl.innerHTML = '<li class="muted">No correct guesses yet.</li>';
+        } else {
+          fastestEl.innerHTML = data.fastest.map((g,i)=>(
+            `<li><b>${i+1}.</b> “${g.word}” — ${fmtSec(g.response_sec)} ` +
+            `<span class="muted">(game ${g.game_code || g.game_id}, round ${g.round_no})</span></li>`
+          )).join('');
+        }
+
+        // Hardest
+        if (!data.hardest?.length){
+          hardestEl.innerHTML = '<li class="muted">No correct guesses yet.</li>';
+        } else {
+          hardestEl.innerHTML = data.hardest.map((g,i)=>(
+            `<li><b>${i+1}.</b> “${g.word}” — ${fmtSec(g.response_sec)} ` +
+            `<span class="muted">(game ${g.game_code || g.game_id}, round ${g.round_no})</span></li>`
+          )).join('');
+        }
+      } catch(e){
+        fastestEl.innerHTML = '<li class="muted">Failed to load.</li>';
+        hardestEl.innerHTML = '<li class="muted">Failed to load.</li>';
+      }
+    });
+  </script>
+{% endblock %}

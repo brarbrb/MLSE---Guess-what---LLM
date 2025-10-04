@@ -100,3 +100,27 @@ body.modal-open .site-header{
 .btn-sm{ padding:.5rem .8rem; border-radius:8px; }
 /* When a panel is open, prevent the body from scrolling */
 body.modal-open { overflow: hidden; }
+
+/* Past games (full-width) */
+.pg-wrap { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }
+.pg-header { display:flex; align-items:center; justify-content:space-between; gap:.75rem; margin-bottom:1rem; }
+
+.games-grid { display:grid; gap:12px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.game-card { border:1px solid #e5e7eb; border-radius:12px; padding:12px; background:#fff; box-shadow:0 4px 18px rgba(0,0,0,.05); text-decoration:none; color:inherit; }
+.game-card h4 { margin:0 0 .25rem 0; font-size:1rem; }
+.game-meta { font-size:.9rem; color:#555; display:grid; gap:.2rem; }
+.game-actions { margin-top:.75rem; display:flex; justify-content:space-between; gap:.5rem; align-items:center; }
+.muted { color:#6b7280; }
+
+
+/* Profile page */
+.profile-wrap { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }
+.profile-header { display:flex; align-items:center; justify-content:space-between; gap:.75rem; margin-bottom:1rem; }
+.profile-grid { display:grid; gap:16px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.stat-card { border:1px solid #e5e7eb; border-radius:12px; padding:14px; background:#fff; box-shadow:0 4px 18px rgba(0,0,0,.05); color:#111; }
+.stat-card h3 { margin:.2rem 0 .6rem 0; }
+.stat-list { margin:0; padding-left:1.1rem; }
+.stat-list li { margin:.15rem 0; }
+.kpis { display:flex; gap:.5rem; flex-wrap:wrap; }
+.kpi { background:#eef2ff; color:#111; border:1px solid rgba(0,0,0,.06); border-radius:10px; padding:.4rem .6rem; font-weight:600; }
+.muted { color:#6b7280; }

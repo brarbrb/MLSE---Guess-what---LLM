@@ -39,3 +39,15 @@
 /* small fade for waiting -> description */
 .fade-in { animation: fadein .4s ease-out both; }
 @keyframes fadein { from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:none} }
+
+.review-nav {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  right: 16px;
+  pointer-events: none;
+}
+#review-prev, #review-next {
+  pointer-events: auto;
+}
+#review-next { float: right; }

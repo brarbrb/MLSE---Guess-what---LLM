@@ -282,34 +282,50 @@ def my_active():
     finally:
         db.close()
 
-
 @games_bp.get("/my_past")
-def my_past():
-    uid, err = _require_login()
-    if err:
-        return err
+def my_past_games():
+    uid = session.get("user_id")
+    if not uid:
+        return jsonify(error="not_logged_in"), 401
 
     db = _db()
     try:
-        rows = (
+        q = (
             db.query(Game)
               .join(PlayerGame, PlayerGame.GameID == Game.GameID)
-              .filter(PlayerGame.UserID == uid)
-              .filter(Game.Status == "completed")
-              .order_by(Game.CreatedAt.desc())
-              .all()
+              .filter(PlayerGame.UserID == uid, Game.Status == "completed")
+              .order_by(Game.EndedAt.desc().nullslast())
         )
-        out = []
-        for g in rows:
-            out.append({
-                "id": g.GameID,
-                "code": g.GameCode,
-                "players": getattr(g, "CurrentPlayersCount", 0) or 0,
-                "max": getattr(g, "MaxPlayers", None),
-                "createdAt": g.CreatedAt.isoformat() + "Z" if getattr(g, "CreatedAt", None) else None,
-                "endedAt": g.EndedAt.isoformat() + "Z" if getattr(g, "EndedAt", None) else None,
-                "status": g.Status,
+
+        items = []
+        for g in q.all():
+            players = (
+                db.query(User.Username)
+                  .join(PlayerGame, PlayerGame.UserID == User.UserID)
+                  .filter(PlayerGame.GameID == g.GameID)
+                  .all()
+            )
+            players = [p[0] for p in players]
+            duration_sec = None
+            if g.StartedAt and g.EndedAt:
+                duration_sec = int((g.EndedAt - g.StartedAt).total_seconds())
+
+            winner = None
+            if g.WinnerID:
+                winner = db.query(User.Username).filter(User.UserID == g.WinnerID).scalar()
+
+            items.append({
+                "game_id": g.GameID,
+                "game_code": g.GameCode,
+                "ended_at": g.EndedAt.isoformat() + "Z" if g.EndedAt else None,
+                "started_at": g.StartedAt.isoformat() + "Z" if g.StartedAt else None,
+                "total_rounds": g.TotalRounds,
+                "players_count": len(players),
+                "players": players,
+                "duration_sec": duration_sec,
+                "winner": winner
             })
-        return jsonify(out)
+
+        return jsonify(ok=True, games=items)
     finally:
         db.close()
