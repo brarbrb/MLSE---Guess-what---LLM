@@ -10,7 +10,8 @@
     user: {},
     startedAt: null,
     timerId: null,
-    isCreator: false
+    isCreator: false,
+    betweenRounds: false
   };
 
   const overlay = $("#modal-overlay");
@@ -104,6 +105,28 @@
     });
     return r.json();
   }
+      // ---------- CHAT HISTORY (on page load) ----------
+    async function loadChatHistory({ round = 'current', limit = 200 } = {}) {
+      const gid = state.gameId;
+      if (!gid) return;
+
+      const params = new URLSearchParams();
+      if (round) params.set('round', round);   // 'current' or unset for all
+      if (limit) params.set('limit', String(limit));
+
+      try {
+        const res  = await fetch(`/api/room/${gid}/chat?` + params.toString(), { credentials: 'same-origin' });
+        const data = await res.json();
+        if (!res.ok || !data.ok) return;
+
+        // clear + render
+        const box = $("#chat-list");
+        if (box) box.innerHTML = '';
+        (data.messages || []).forEach(m => addChatLine(m.user, m.text, m.ts, m.type));
+      } catch (e) {
+        console.error('chat history load failed', e);
+      }
+    }
 
   // ---------- POLLING ----------
   let pollId=null;
@@ -129,16 +152,6 @@
     socket.on("chat:new", (msg)=> addChatLine(msg.user, msg.text));
     socket.on("round:description", (data)=> onDescriptionLive(data));
     socket.on("round:won", (data)=> onWinnerLive(data));
-
-    // Use REST for guesses so scoring/win logic always runs
-    $("#chat-form")?.addEventListener("submit", async (e)=>{
-      e.preventDefault();
-      if (state.isCreator) return;
-      const t = $("#chat-input").value.trim();
-      if (!t) return;
-      await sendGuess(t); // backend will emit round:won if correct
-      $("#chat-input").value = "";
-    });
   }
 
   // ---------- SNAPSHOT -> UI ----------
@@ -147,8 +160,10 @@
     state.isCreator = (d.turn && (d.turn === (state.user?.username||"")));
     const inp = $("#chat-input");
     const btn = $("#chat-send");
-    if (inp) inp.disabled = !!state.isCreator || state.reviewMode;
-    if (btn) btn.disabled = !!state.isCreator || state.reviewMode;
+    const isCompleted = (d.status === 'completed');
+
+    if (inp) inp.disabled = !!state.isCreator || state.reviewMode|| isCompleted;
+    if (btn) btn.disabled = !!state.isCreator || state.reviewMode|| isCompleted;
 
     // Optional: note when blocked
     let note = document.getElementById("creator-chat-note");
@@ -170,6 +185,10 @@
     renderPlayers(d.players || [], d.scores || {});
     window.__lastScores = d.scores || {};
 
+    // round title text: "Round N"
+    const rt = document.getElementById('round-title');
+    if (rt) rt.textContent = `Round ${Number(d.roundNumber || state.roundNo || 1)}`;
+
     // expose total rounds for review nav
     const main = document.querySelector('main') || document.body;
     main.setAttribute('data-total-rounds', String(d.totalRounds || 0));
@@ -184,29 +203,34 @@
 
     // modals (no modals in review mode)
     if (!state.reviewMode) {
-      if (d.status === "waiting_description") {
-        if (state.isCreator) {
-          $("#modal-target").textContent = d.targetWord || "—";
-          const ul=$("#modal-forbidden"); ul.innerHTML="";
-          (d.forbiddenWords||[]).forEach(w=>{ const li=document.createElement("li"); li.textContent=w; ul.appendChild(li); });
-          showModal(modals.describer);
-        } else {
-          $("#waiting-title").textContent = "Waiting for description…";
-          $("#waiting-text").textContent = "The describer is preparing a clue.";
-          showModal(modals.waiting);
-        }
-      } else if (d.status === "active") {
-        hideModal(modals.describer);
-        hideModal(modals.waiting);
-      } else if (d.status === "completed") {
-        startTimer(null);
-      }
+  if (state.betweenRounds) {
+    // Freeze UI during the inter-round countdown
+    hideModal(modals.describer);
+    hideModal(modals.waiting);
+  } else if (d.status === "waiting_description") {
+    if (state.isCreator) {
+      $("#modal-target").textContent = d.targetWord || "—";
+      const ul=$("#modal-forbidden"); ul.innerHTML="";
+      (d.forbiddenWords||[]).forEach(w=>{ const li=document.createElement("li"); li.textContent=w; ul.appendChild(li); });
+      showModal(modals.describer);
+    } else {
+      $("#waiting-title").textContent = "Waiting for description…";
+      $("#waiting-text").textContent = "The describer is preparing a clue.";
+      showModal(modals.waiting);
     }
+  } else if (d.status === "active") {
+    hideModal(modals.describer);
+    hideModal(modals.waiting);
+  } else if (d.status === "completed") {
+    startTimer(null);
+  }
+}
+
   }
 
   // live handlers
   function onDescriptionLive(data){
-    if (state.reviewMode) return;
+  if (state.reviewMode || state.betweenRounds) return;   // <— add this
     $("#waiting-title").textContent = "Description ready!";
     $("#waiting-text").textContent  = data.description || "";
     $("#modal-waiting").classList.add("fade-in");
@@ -216,42 +240,68 @@
     setTimeout(()=> hideModal(modals.waiting), 3000);
   }
 
-  function onWinnerLive(data){
-    if (state.reviewMode) return;
+function onWinnerLive(data){
+  if (state.reviewMode) return;
 
-    // stop & mark completed for this round
-    startTimer(null);
-    setBadge("completed");
+  // stop & mark completed for this round
+  startTimer(null);
+  setBadge("completed");
+  hideModal(modals.describer);
+  hideModal(modals.waiting);
+
+  const roundNumber = Number(data?.roundNumber || 1);
+  const totalRounds = Number(data?.totalRounds || 1);
+  const isLast = !!data?.gameCompleted || (roundNumber >= totalRounds);
+
+  $("#winner-name").textContent = data?.winner || "Someone";
+  $("#winner-word").textContent = data?.word || "";
+  $("#winner-time").textContent = (typeof data?.elapsedMs === "number")
+    ? `Time: ${(data.elapsedMs/1000).toFixed(1)}s` : "";
+
+  const actionsSel = "#modal-winner .actions, #modal-winner .panel-actions, #modal-winner .modal-actions";
+
+  if (!isLast) {
+    // === BETWEEN ROUNDS (not last) ===
+    state.betweenRounds = true;                 // block any other modals during countdown
+
+    // Close other modals just in case
     hideModal(modals.describer);
     hideModal(modals.waiting);
 
-    const roundNumber = Number(data?.roundNumber || 1);
-    const totalRounds = Number(data?.totalRounds || 1);
-    const isLast = !!data?.gameCompleted || (roundNumber >= totalRounds);
+    // Robustly hide actions & both buttons
+    const winner = document.getElementById("modal-winner");
+    const actions = winner?.querySelector(".modal-actions");
+    if (actions) {
+      actions.hidden = true;
+      actions.style.display = "none";
+    }
+    const seeGameBtn = document.getElementById("btn-see-game");
+    if (seeGameBtn) { seeGameBtn.hidden = true; seeGameBtn.style.display = "none"; }
+    const exitBtn = winner?.querySelector(".btn.danger");
+    if (exitBtn) { exitBtn.hidden = true; exitBtn.style.display = "none"; }
 
-    $("#winner-name").textContent = data?.winner || "Someone";
-    $("#winner-word").textContent = data?.word || "";
-    $("#winner-time").textContent = (typeof data?.elapsedMs === "number")
-      ? `Time: ${(data.elapsedMs/1000).toFixed(1)}s` : "";
-
-    const actionsSel = "#modal-winner .actions, #modal-winner .panel-actions, #modal-winner .modal-actions";
-
-    if (!isLast) {
-      // Between rounds: brief flash, no buttons, then redirect everyone to next round page
-      const actions = document.querySelector(actionsSel);
-      if (actions) actions.hidden = true;
-
-      showModal(modals.winner);
-
-      setTimeout(()=>{
-        const next = roundNumber + 1;
-        window.location.href = `/room/${state.gameId}/${next}`;
-      }, 1200);
-
-      return;
+    // Countdown text
+    const countdownEl = document.getElementById("between-rounds-countdown");
+    if (countdownEl) {
+      countdownEl.hidden = false;
+      let remain = 10;
+      countdownEl.textContent = `The next round will start in ${remain}s`;
+      const timer = setInterval(()=>{
+        remain -= 1;
+        if (remain <= 0) {
+          clearInterval(timer);
+          const next = roundNumber + 1;
+          window.location.href = `/room/${state.gameId}/${next}`;
+        } else {
+          countdownEl.textContent = `The next round will start in ${remain}s`;
+        }
+      }, 1000);
     }
 
-    // LAST round: show final results & keep buttons visible (no auto-close)
+    showModal(modals.winner);
+    return;
+  } else {
+    // === LAST ROUND ===
     const podium = topThree(window.__lastScores || {});
     const box = document.getElementById("winner-final-results");
     if (box) {
@@ -265,6 +315,9 @@
 
     showModal(modals.winner);
   }
+}
+
+
 
   // ---------- Review navigation ----------
   function setupReviewNav(){
@@ -314,6 +367,21 @@
       // enter review mode at round 1
       window.location.href = `/room/${state.gameId}/1?review=1`;
     });
+    // Always prevent form submission (avoids page reload in review mode)
+    $("#chat-form")?.addEventListener("submit", async (e)=>{
+      e.preventDefault();
+
+      // Block sending when creator, in review mode, or if game completed (handled in applySnapshot too)
+      if (state.isCreator || state.reviewMode) return;
+
+      const input = $("#chat-input");
+      const text  = input?.value.trim();
+      if (!text) return;
+
+      await sendGuess(text);           // backend handles scoring & emits chat/new + round:won if needed
+      if (input) input.value = "";
+    });
+
   }
 
   // ---------- init ----------
@@ -322,6 +390,12 @@
     state.gameId = p.gameId;
     state.roundNo = p.roundNo || null;
     state.reviewMode = getQueryParam('review') === '1';
+    if (state.reviewMode) {
+      const inp = $("#chat-input");
+      const btn = $("#chat-send");
+      if (inp) inp.disabled = true;
+      if (btn) btn.disabled = true;
+    }
 
     try { state.user = JSON.parse(localStorage.getItem("currentUser")||"{}"); } catch {}
 
@@ -334,11 +408,15 @@
       (async ()=>{
         const data = await getRoom();
         if (!data.error) applySnapshot(data, { from: "review" });
+        // show chat history for *this round* in review mode
+        await loadChatHistory({ round: 'current' });
         setupReviewNav();
       })();
     } else {
       setupSockets();
       startPolling();
+      // show chat history for the *current* live round
+      loadChatHistory({ round: 'current' });
     }
   })();
 })();

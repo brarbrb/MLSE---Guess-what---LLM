@@ -259,7 +259,7 @@ def my_active():
 
     db = _db()
     try:
-        rows = (
+        games = (
             db.query(Game)
               .join(PlayerGame, PlayerGame.GameID == Game.GameID)
               .filter(PlayerGame.UserID == uid)
@@ -267,20 +267,39 @@ def my_active():
               .order_by(Game.CreatedAt.desc())
               .all()
         )
+
         out = []
-        for g in rows:
+        for g in games:
+            total_rounds = int(getattr(g, "TotalRounds", 0) or 0)
+
+            # currentRound = completed_count + 1 (but never exceed total_rounds if known)
+            completed_count = (
+                db.query(func.count(Round.RoundID))
+                  .filter(Round.GameID == g.GameID, Round.Status == "completed")
+                  .scalar()
+            ) or 0
+
+            # Start from 1 even if nothing completed yet
+            current_round = completed_count + 1
+            if total_rounds > 0:
+                current_round = min(current_round, total_rounds)
+
             out.append({
                 "id": g.GameID,
                 "code": g.GameCode,
-                "players": getattr(g, "CurrentPlayersCount", 0) or 0,
+                "players": int(getattr(g, "CurrentPlayersCount", 0) or 0),
                 "max": getattr(g, "MaxPlayers", None),
                 "createdAt": g.CreatedAt.isoformat() + "Z" if getattr(g, "CreatedAt", None) else None,
                 "startedAt": g.StartedAt.isoformat() + "Z" if getattr(g, "StartedAt", None) else None,
                 "status": g.Status,
+                "totalRounds": total_rounds or None,   # keep None if unknown
+                "currentRound": int(max(1, current_round)),
             })
+
         return jsonify(out)
     finally:
         db.close()
+
 
 @games_bp.get("/my_past")
 def my_past_games():
@@ -310,7 +329,7 @@ def my_past_games():
             if g.StartedAt and g.EndedAt:
                 duration_sec = int((g.EndedAt - g.StartedAt).total_seconds())
 
-            winner = None
+            winner = "None"
             if g.WinnerID:
                 winner = db.query(User.Username).filter(User.UserID == g.WinnerID).scalar()
 

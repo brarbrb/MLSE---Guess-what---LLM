@@ -218,43 +218,62 @@
       return `${m}:${s}`;
     }
 
-    async function loadMyActiveGames() {
-      const grid = document.getElementById('my-active-games');
-      if (!grid) return;
+// ---------- Active games (right panel) ----------
+async function loadMyActiveGames() {
+  const grid = document.getElementById('my-active-games');
+  if (!grid) return;
 
-      grid.innerHTML = `<p class="muted">Loading…</p>`;
+  grid.innerHTML = `<p class="muted">Loading…</p>`;
 
-      try {
-        // expects backend /api/games/my_active
-        const data = await _fetchJSON('/api/games/my_active'); // [{id, code, players, max, createdAt, startedAt, status}]
-        if (!Array.isArray(data) || data.length === 0) {
-          grid.innerHTML = `<p class="muted">No active games yet.</p>`;
-          return;
-        }
-
-        grid.innerHTML = '';
-        const now = Date.now();
-
-        data.forEach(g => {
-          const t0 = g.startedAt ? Date.parse(g.startedAt) : (g.createdAt ? Date.parse(g.createdAt) : null);
-          const elapsed = t0 ? _fmtElapsedMs(now - t0) : '—';
-
-          const card = document.createElement('div');
-          card.className = 'game-card';
-          card.innerHTML = `
-            <div class="code">${g.code || g.id}</div>
-            <div class="meta">${g.players ?? '0'}/${g.max ?? '—'} • ${elapsed}</div>
-          `;
-          card.addEventListener('click', () => {
-            window.location.href = '/room/' + g.id;
-          });
-          grid.appendChild(card);
-        });
-      } catch (e) {
-        grid.innerHTML = `<p class="error">Failed to load games.</p>`;
-        console.error(e);
-      }
+  try {
+    // expects backend /api/games/my_active -> [{id, code, players, max, createdAt, startedAt, status, currentRound, totalRounds}]
+    const data = await _fetchJSON('/api/games/my_active');
+    if (!Array.isArray(data) || data.length === 0) {
+      grid.innerHTML = `<p class="muted">No active games yet.</p>`;
+      return;
     }
+
+    grid.innerHTML = '';
+    const now = Date.now();
+
+    data.forEach(g => {
+      const t0 = g.startedAt ? Date.parse(g.startedAt) : (g.createdAt ? Date.parse(g.createdAt) : null);
+      const elapsed = t0 ? `${_fmtElapsedMs(now - t0)}` : '—';
+
+      // Build the "Players: X/Y • mm:ss elapsed • Round: a/b" line
+      const playersStr = `Players: ${g.players ?? 0}/${g.max ?? '—'}`;
+      const roundStr = (g.currentRound && g.totalRounds)
+        ? ` • Round: ${g.currentRound}/${g.totalRounds}`
+        : '';
+      // Card
+      const card = document.createElement('div');
+      card.className = 'game-card';
+
+      // Code/title row (use textContent to avoid escaping helpers)
+      const codeEl = document.createElement('div');
+      codeEl.className = 'code';
+      codeEl.textContent = g.code || String(g.id);
+
+      // Meta row
+      const metaEl = document.createElement('div');
+      metaEl.className = 'meta';
+      metaEl.textContent = `${playersStr} • ${elapsed}${roundStr}`;
+
+      card.appendChild(codeEl);
+      card.appendChild(metaEl);
+
+      card.addEventListener('click', () => {
+        window.location.href = '/room/' + g.id;
+      });
+
+      grid.appendChild(card);
+    });
+  } catch (e) {
+    grid.innerHTML = `<p class="error">Failed to load games.</p>`;
+    console.error(e);
+  }
+}
+
 
     // Kick off right panel population on page load
     loadMyActiveGames();

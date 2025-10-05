@@ -124,3 +124,62 @@ body.modal-open { overflow: hidden; }
 .kpis { display:flex; gap:.5rem; flex-wrap:wrap; }
 .kpi { background:#eef2ff; color:#111; border:1px solid rgba(0,0,0,.06); border-radius:10px; padding:.4rem .6rem; font-weight:600; }
 .muted { color:#6b7280; }
+
+/* --- Sticky footer banner --- */
+:root {
+  --footer-h: 56px;   /* tweak height here if you change padding */
+}
+
+/* Keep footer pinned and under modals */
+footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  background: #0f2a3d;
+  color: #fff;
+  padding: .6rem 1rem; /* ~56px total height with line-height */
+  z-index: 10;         /* modals sit at 50/60 in room.css */
+  box-shadow: 0 -2px 8px rgba(0,0,0,.15);
+}
+
+/* Ensure page content never hides behind the fixed footer */
+main {
+  padding-bottom: calc(var(--footer-h) + 8px);
+}
+
+/* === Global color tokens (light + dark) === */
+:root{
+  --page-bg-light: #a7c7ea;     /* your blue page bg */
+  --page-bg-dark:  #0b1a2a;     /* deep blue for dark mode */
+
+  --text-light:    #0f172a;     /* slate-900 */
+  --text-dark:     #e5e7eb;     /* slate-200 */
+
+  --panel-light:   rgba(255,255,255,.35);
+  --panel-dark:    rgba(17,24,39,.6);  /* near #111827 with transparency */
+
+  --border-light:  #e5e7eb;     /* gray-200 */
+  --border-dark:   #334155;     /* slate-700 */
+
+  --muted-light:   #6b7280;     /* gray-500 */
+  --muted-dark:    #94a3b8;     /* slate-400 */
+}
+
+/* page base */
+body {
+  background: var(--page-bg-light);
+  color: var(--text-light);
+}
+
+/* dark mode base */
+@media (prefers-color-scheme: dark){
+  body {
+    background: var(--page-bg-dark);
+    color: var(--text-dark);
+  }
+}
+
+/* make default links readable in both themes */
+a { color: inherit; }

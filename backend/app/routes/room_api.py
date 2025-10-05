@@ -1,8 +1,9 @@
 from flask import Blueprint, request, jsonify, session
 from ...database.db import SessionLocal
-from ...database.models import Game, PlayerGame, Round, Guess, User
+from ...database.models import Game, PlayerGame, Round, Guess, User,  GameSettings, ChatMessage
 from ...lm_core.word_loader import WordLoader
 from ...extensions import socketio
+from sqlalchemy import func
 
 import datetime as dt
 import re
@@ -33,19 +34,6 @@ def _emit(event, data, game_id):
     if socketio:
         socketio.emit(event, data, to=f"game-{game_id}")
 
-def _parse_forbidden(raw):
-    if not raw:
-        return []
-    if isinstance(raw, (list, tuple)):
-        return list(raw)
-    txt = str(raw).strip()
-    try:
-        v = json.loads(txt)
-        if isinstance(v, list):
-            return [str(x) for x in v]
-    except Exception:
-        pass
-    return [p.strip() for p in txt.split(",") if p.strip()]
 
 def _round_status(rnd) -> str:
     if not rnd or not rnd.Description:
@@ -255,62 +243,138 @@ def put_guess(game_id: int):
             return jsonify(error="round_not_ready", message="Wait for the description"), 400
 
         data = request.get_json(force=True) or {}
-        guess_raw = (data.get("guess") or "").strip()
+        guess_raw = (data.get("guess") or data.get("text") or "").strip()
         if not guess_raw:
             return jsonify(error="empty_guess"), 400
 
         # normalize & compare
-        target  = _normalize(rnd.TargetWord)
-        guess_n = _normalize(guess_raw)
-        correct = (guess_n == target)
+        target_n  = _normalize(rnd.TargetWord)
+        guess_n   = _normalize(guess_raw)
+        correct   = (guess_n == target_n)
 
-        # elapsed
+        # timings
         now = dt.datetime.utcnow()
-        elapsed_ms = int((now - rnd.StartTime).total_seconds() * 1000) if rnd.StartTime else None
+        elapsed_sec = max(0.0, (now - (rnd.StartTime or now)).total_seconds())
+        elapsed_ms  = int(elapsed_sec * 1000)
 
-        # persist guess (record points awarded)
+        # persist Guess
         g = Guess(
             GameID=game_id,
             RoundID=rnd.RoundID,
             GuesserID=uid,
             GuessText=guess_raw,
             GuessTime=now,
-            ResponseTimeSeconds=(elapsed_ms / 1000.0) if elapsed_ms is not None else 0.0,
-            PointsAwarded=100 if correct else 0,
-            IsCorrect=bool(correct)
+            ResponseTimeSeconds=elapsed_sec,
+            PointsAwarded=0,
+            IsCorrect=False
         )
         db.add(g)
 
-        # increment user's total guesses
-        pg_this_user = db.query(PlayerGame).filter_by(UserID=uid, GameID=game.GameID).first()
-        if pg_this_user is not None:
-            pg_this_user.TotalGuesses = (pg_this_user.TotalGuesses or 0) + 1
+        # also persist ChatMessage (best-effort)
+        try:
+            msg = ChatMessage(
+                GameID=game_id,
+                RoundID=rnd.RoundID,
+                SenderID=uid,
+                MessageText=guess_raw,
+                MessageType="guess",
+                Timestamp=now,
+                IsVisible=1,
+            )
+            db.add(msg)
+        except Exception:
+            pass  # okay if ChatMessage model differs or is absent
 
-        if correct and rnd.Status != "completed" and (rnd.RoundWinnerID is None):
-            # close the round
+        # emit chat to clients so UI shows it immediately
+        # emit chat to clients so UI shows it immediately (match frontend Room JS)
+        sender_name = db.query(User.Username).filter(User.UserID == uid).scalar()
+        _emit("chat:new", {
+            "user": sender_name,                 # <-- KEY FIX
+            "text": guess_raw                    # <-- frontend uses msg.text
+        }, game.GameID)
+
+        # --- PlayerGame stats updates ---
+        pg = db.query(PlayerGame).filter_by(GameID=game.GameID, UserID=uid).one()
+        pg.TotalGuesses = int(pg.TotalGuesses or 0) + 1
+
+        if correct and rnd.Status != "completed" and rnd.RoundWinnerID is None:
+            # award points (from settings, default 100)
+            settings = db.query(GameSettings).filter(GameSettings.GameID == game.GameID).first()
+            award = int(getattr(settings, "PointsCorrectGuess", 100) or 100)
+
+            # finalize round
             rnd.RoundWinnerID = uid
             rnd.EndTime = now
             rnd.Status = "completed"
+            g.PointsAwarded = award
+            g.IsCorrect = True
 
-            # +100 points to the winner (+1 correct counter)
-            pg_row = db.query(PlayerGame).filter_by(UserID=uid, GameID=game.GameID).first()
-            if pg_row is not None:
-                pg_row.PlayerFinalScore = (pg_row.PlayerFinalScore or 0) + 100
-                pg_row.TotalCorrectGuesses = (pg_row.TotalCorrectGuesses or 0) + 1
+            # correct-guess stats
+            prev_n  = int(pg.TotalCorrectGuesses or 0)
+            new_n   = prev_n + 1
+            prevavg = float(pg.AverageGuessTime or 0.0)
+            newavg  = ((prevavg * prev_n) + elapsed_sec) / new_n
+            pg.TotalCorrectGuesses = new_n
+            pg.AverageGuessTime    = newavg
+            if pg.BestGuessTime is None:
+                pg.BestGuessTime = elapsed_sec
+            else:
+                pg.BestGuessTime = min(float(pg.BestGuessTime), elapsed_sec)
+            pg.PlayerFinalScore = int(pg.PlayerFinalScore or 0) + award
 
-            # next round or finish game
-            if rnd.RoundNumber < game.TotalRounds:
-                next_rn = rnd.RoundNumber + 1
+            # ----- CURRENT LEADER (leaderboard top), NOT turn owner -----
+            # find previous top before we recompute (to update TimesAsLeader if leadership changes)
+                        # ----- CURRENT LEADER (highest score so far), NOT turn owner -----
+            prev_top = (
+                db.query(PlayerGame.UserID, PlayerGame.PlayerFinalScore)
+                  .filter(PlayerGame.GameID == game.GameID)
+                  .order_by(PlayerGame.PlayerFinalScore.desc(), PlayerGame.UserID.asc())
+                  .first()
+            )
+            prev_top_user = prev_top[0] if prev_top else None
 
-                # (simple) next describer: rotate by join order relative to winner (placeholder logic)
-                player_ids = [r.UserID for r in db.query(PlayerGame).filter_by(GameID=game.GameID).all()]
-                if rnd.RoundWinnerID in player_ids:
-                    idx = player_ids.index(rnd.RoundWinnerID)
-                else:
-                    idx = 0
-                next_describer_id = player_ids[(idx + 1) % len(player_ids)] if player_ids else game.CreatorID
+            # recompute top after this award
+            new_top = (
+                db.query(PlayerGame.UserID, PlayerGame.PlayerFinalScore)
+                  .filter(PlayerGame.GameID == game.GameID)
+                  .order_by(PlayerGame.PlayerFinalScore.desc(), PlayerGame.UserID.asc())
+                  .first()
+            )
+            if new_top:
+                game.CurrentLeaderID = int(new_top[0])
 
-                # new word set
+            if new_top and int(new_top[0]) == uid and prev_top_user != uid:
+                pg.TimesAsLeader = int(pg.TimesAsLeader or 0) + 1
+
+            # Advance currentRound = min(rnd.RoundNumber + 1, TotalRounds)
+            if game.TotalRounds:
+                game.CurrentRound = min((rnd.RoundNumber or 1) + 1, game.TotalRounds)
+            else:
+                game.CurrentRound = (rnd.RoundNumber or 1) + 1
+
+            # ---- Decide last round WITHOUT counting ----
+            is_last_round = bool(game.TotalRounds) and (rnd.RoundNumber >= game.TotalRounds)
+
+            if is_last_round:
+                # finalize game (pick winner by highest score)
+                final_top = (
+                    db.query(PlayerGame.UserID, PlayerGame.PlayerFinalScore)
+                      .filter(PlayerGame.GameID == game.GameID)
+                      .order_by(PlayerGame.PlayerFinalScore.desc(), PlayerGame.UserID.asc())
+                      .first()
+                )
+                if final_top:
+                    game.WinnerID = int(final_top[0])
+                    for pg_row in db.query(PlayerGame).filter(PlayerGame.GameID == game.GameID).all():
+                        pg_row.HasWon = (pg_row.UserID == game.WinnerID)
+
+                game.Status = "completed"
+                game.EndedAt = now
+                db.commit()
+            else:
+                # create next round; turn stays with creator
+                next_rn = (rnd.RoundNumber or 1) + 1
+
                 wl = WordLoader()
                 target_word = wl.generate_target_word()
                 if isinstance(target_word, (list, tuple)) and target_word:
@@ -319,6 +383,7 @@ def put_guess(game_id: int):
                 forbidden_list = wl.generate_forbidden_list(target_word) or []
                 if not isinstance(forbidden_list, (list, tuple)):
                     forbidden_list = [str(forbidden_list)]
+                forbidden_list = list(forbidden_list)
 
                 new_round = Round(
                     GameID=game.GameID,
@@ -326,27 +391,20 @@ def put_guess(game_id: int):
                     RoundWinnerID=None,
                     TargetWord=target_word,
                     Description=None,
-                    ForbiddenWords=list(forbidden_list),
+                    ForbiddenWords=forbidden_list,
                     Hints=[],
                     StartTime=None,
                     EndTime=None,
                     MaxRoundTime=rnd.MaxRoundTime,
                     Status="waiting_description",
-                    # TurnUserID=next_describer_id  # if/when you add this column
                 )
                 db.add(new_round)
                 game.Status = "active"
-            else:
-                # last round -> finish game
-                game.Status = "completed"
-                game.EndedAt = now
+                db.commit()
 
-            db.commit()
-
-            winner_name = db.query(User.Username).filter(User.UserID == uid).scalar()
-
+            # notify clients of round win
             _emit("round:won", {
-                "winner": winner_name,
+                "winner": sender_name,
                 "word": rnd.TargetWord,
                 "elapsedMs": elapsed_ms,
                 "roundNumber": rnd.RoundNumber,
@@ -357,18 +415,106 @@ def put_guess(game_id: int):
             return jsonify(
                 correct=True,
                 message="🎉 Correct! You won!",
-                winner=winner_name,
+                winner=sender_name,
                 elapsedMs=elapsed_ms,
                 word=rnd.TargetWord,
                 roundNumber=rnd.RoundNumber,
                 totalRounds=game.TotalRounds,
                 gameCompleted=(game.Status == "completed")
             )
+
         else:
+            # wrong guess: just commit persisted Guess and stats
             db.commit()
             return jsonify(correct=False, message="Nope, try again")
     except Exception as e:
         db.rollback()
         return jsonify(error="guess_failed", detail=str(e)), 400
+    finally:
+        db.close()
+
+
+@room_bp.get("/api/room/<int:game_id>/chat")
+def get_chat_history(game_id: int):
+    db = _db()
+    try:
+        uid, err = _require_member(db, game_id)
+        if err:
+            return err
+
+        # query params
+        limit = max(1, min(int(request.args.get("limit", 200) or 200), 500))
+        since_iso = request.args.get("since")
+        only_current_round = (request.args.get("round") == "current")
+
+        since_dt = None
+        if since_iso:
+            try:
+                since_dt = dt.datetime.fromisoformat(since_iso.replace("Z", "+00:00"))
+            except Exception:
+                since_dt = None
+
+        # If round=current, resolve the latest round number
+        round_filter = None
+        if only_current_round:
+            latest = (
+                db.query(Round)
+                  .filter(Round.GameID == game_id)
+                  .order_by(Round.RoundNumber.desc())
+                  .first()
+            )
+            if latest:
+                round_filter = latest.RoundID
+
+        # Do we have ChatMessage rows at all for this game?
+        has_cm = (
+            db.query(ChatMessage.MessageID)
+              .filter(ChatMessage.GameID == game_id)
+              .first()
+            is not None
+        )
+
+        messages = []
+
+        if has_cm:
+            # Primary source = ChatMessage
+            q = db.query(ChatMessage, User.Username)\
+                  .join(User, User.UserID == ChatMessage.SenderID)\
+                  .filter(ChatMessage.GameID == game_id)
+            if round_filter:
+                q = q.filter(ChatMessage.RoundID == round_filter)
+            if since_dt:
+                q = q.filter(ChatMessage.Timestamp > since_dt)
+            q = q.order_by(ChatMessage.Timestamp.asc()).limit(limit)
+
+            for cm, uname in q.all():
+                messages.append({
+                    "user": uname or "Unknown",
+                    "text": cm.MessageText or "",
+                    "ts": (cm.Timestamp.isoformat() + "Z") if cm.Timestamp else None,
+                    "type": cm.MessageType or "chat"
+                })
+        else:
+            # Fallback for legacy games = use Guess table
+            q = db.query(Guess, User.Username)\
+                  .join(User, User.UserID == Guess.GuesserID)\
+                  .filter(Guess.GameID == game_id)
+            if round_filter:
+                q = q.filter(Guess.RoundID == round_filter)
+            if since_dt:
+                q = q.filter(Guess.GuessTime > since_dt)
+            q = q.order_by(Guess.GuessTime.asc()).limit(limit)
+
+            for g, uname in q.all():
+                messages.append({
+                    "user": uname or "Unknown",
+                    "text": g.GuessText or "",
+                    "ts": (g.GuessTime.isoformat() + "Z") if g.GuessTime else None,
+                    "type": "guess"
+                })
+
+        return jsonify(ok=True, messages=messages)
+    except Exception as e:
+        return jsonify(ok=False, error="chat_history_failed", detail=str(e)), 400
     finally:
         db.close()
