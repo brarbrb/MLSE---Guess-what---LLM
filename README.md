@@ -5,6 +5,7 @@
 
 ## 🎥 The video of UI
 [Link to the video](https://drive.google.com/file/d/1JU13MtruRZ-vhZtxDW12pHXvcowiwFwJ/view?usp=sharing)
+(I'm sorry for slow - I have constant problems with internet)
 
 
 ## 👩‍💻 Creators
