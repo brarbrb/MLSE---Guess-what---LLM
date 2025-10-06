@@ -32,7 +32,7 @@ The project is organized into three main parts:
 ## 🐋 Setup and Run (Docker)
    ```bash
    git clone https://github.com/brarbrb/guess-what.git
-   cd guess-what
+   cd MLSE---Guess-what---LLM
    docker compose up --build
    ```
    (`docker compose down` to stop)
@@ -43,15 +43,11 @@ We ensist on running only with conda (we installed miniconda3) if you don't want
 
 ```bash
    git clone https://github.com/brarbrb/guess-what.git
-   cd guess-what
+   cd MLSE---Guess-what---LLM
    conda create environment.yml
    conda activate guess-what
    python -m backend.main
 ```
-
-
-```
-
 
 
 --- 
