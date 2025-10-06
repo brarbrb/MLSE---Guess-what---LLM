@@ -29,14 +29,30 @@ The project is organized into three main parts:
 
 ---
 
-## ⚙️ Setup and Run (Docker)
-1. Clone this repository:
+## 🐋 Setup and Run (Docker)
    ```bash
    git clone https://github.com/brarbrb/guess-what.git
    cd guess-what
    docker compose up --build
    ```
    (`docker compose down` to stop)
+   
+---
+## ⚙️ Running Locaally (using conda)
+We ensist on running only with conda (we installed miniconda3) if you don't want to suffer on cpu 🙂.
+
+```bash
+   git clone https://github.com/brarbrb/guess-what.git
+   cd guess-what
+   conda create environment.yml
+   conda activate guess-what
+   python -m backend.main
+```
+
+
+```
+
+
 
 --- 
 ## 📁 Folder structure
