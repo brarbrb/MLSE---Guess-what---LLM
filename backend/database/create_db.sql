@@ -1,6 +1,9 @@
 PRAGMA foreign_keys = ON;
 
--- ---------- User ----------
+-- This file were used only as a base sql that we later translated to sqlalchemy. It isn't sctually used! 
+-- can be used for debugging purposes if needed. 
+-- we created the database in the models.py module! 
+ 
 CREATE TABLE "User" (
   UserID INTEGER PRIMARY KEY,
   Username VARCHAR(50) UNIQUE NOT NULL,
@@ -15,7 +18,6 @@ CREATE TABLE "User" (
   IsActive INTEGER DEFAULT 1
 );
 
--- ---------- Game ----------
 CREATE TABLE Game (
   GameID INTEGER PRIMARY KEY,
   CreatorID INTEGER NOT NULL REFERENCES "User"(UserID),
@@ -33,7 +35,6 @@ CREATE TABLE Game (
   IsPrivate INTEGER DEFAULT 0
 );
 
--- ---------- GameSettings ----------
 CREATE TABLE GameSettings (
   GameID INTEGER PRIMARY KEY REFERENCES Game(GameID),
   RoundTimeSeconds INTEGER DEFAULT 180,
@@ -43,7 +44,6 @@ CREATE TABLE GameSettings (
   MaxHintsPerRound INTEGER DEFAULT 3
 );
 
--- ---------- PlayerGame ----------
 CREATE TABLE PlayerGame (
   PlayerGameID INTEGER PRIMARY KEY,
   UserID INTEGER NOT NULL REFERENCES "User"(UserID),
@@ -59,7 +59,6 @@ CREATE TABLE PlayerGame (
   UNIQUE(UserID, GameID)
 );
 
--- ---------- Round ----------
 CREATE TABLE Round (
   RoundID INTEGER PRIMARY KEY,
   GameID INTEGER NOT NULL REFERENCES Game(GameID),
@@ -71,14 +70,13 @@ CREATE TABLE Round (
   Guesses JSON DEFAULT '[]',
   ForbiddenWords JSON NOT NULL DEFAULT '[]',
   Hints JSON,
-  StartTime TIMESTAMP,                         -- nullable, no default
+  StartTime TIMESTAMP,                         
   EndTime TIMESTAMP,
   MaxRoundTime INTEGER DEFAULT 180,
   Status VARCHAR(20) DEFAULT 'active' CHECK (Status IN ('waiting_description','active','completed','timeout')),
   UNIQUE(GameID, RoundNumber)
 );
 
--- ---------- Guess ----------
 CREATE TABLE Guess (
   GuessID INTEGER PRIMARY KEY,
   GameID INTEGER NOT NULL REFERENCES Game(GameID),
@@ -91,7 +89,6 @@ CREATE TABLE Guess (
   IsCorrect INTEGER DEFAULT 0
 );
 
--- ---------- ChatMessage ----------
 CREATE TABLE ChatMessage (
   MessageID INTEGER PRIMARY KEY,
   GameID INTEGER NOT NULL REFERENCES Game(GameID),
