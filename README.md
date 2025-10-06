@@ -3,6 +3,8 @@
 
 ![App](https://github.com/brarbrb/MLSE---Guess-what---LLM/blob/main/bin/Screenshot%20%20002150.png)
 
+## 🎥 The video of UI
+[Link to the video](https://drive.google.com/file/d/1JU13MtruRZ-vhZtxDW12pHXvcowiwFwJ/view?usp=sharing)
 
 
 ## 👩‍💻 Creators
