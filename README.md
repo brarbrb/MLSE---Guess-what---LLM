@@ -20,6 +20,8 @@ The project is organized into three main parts:
 | **db** | SQLite database container for storing users, games, rounds, and chat messages. |
 | **ai** | AI microservice (lm_core) responsible for generating target words, validating descriptions, and suggesting forbidden lists. |
 
+
+
 ---
 
 ## 🛠️ Technologies
@@ -44,7 +46,7 @@ project_root/
 │   │   └── models.py         # ORM models
 │   ├── routes/
 │   │   └── room_api.py       # Game logic routes
-│   ├── lm_core/      # AI logic
+│   ├── lm_core/              # AI logic
 │   └── extensions.py   
 |
 ├── frontend/
