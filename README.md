@@ -44,7 +44,7 @@ We ensist on running only with conda (we installed miniconda3) if you don't want
 ```bash
    git clone https://github.com/brarbrb/guess-what.git
    cd MLSE---Guess-what---LLM
-   conda create environment.yml
+   conda env create -f environment.yml
    conda activate guess-what
    python -m backend.main
 ```
