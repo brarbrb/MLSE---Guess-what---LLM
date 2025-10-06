@@ -31,28 +31,6 @@ The project is organized into three main parts:
 - **HTML / CSS / JavaScript**
 - **LLM model** (`phi3:mini`)
 
----
-
-## 🐋 Setup and Run (Docker)
-   ```bash
-   git clone https://github.com/brarbrb/guess-what.git
-   cd MLSE---Guess-what---LLM
-   docker compose up --build
-   ```
-   (`docker compose down` to stop)
-   
----
-## ⚙️ Running Locaally (using conda)
-We ensist on running only with conda (we installed miniconda3) if you don't want to suffer on cpu 🙂.
-
-```bash
-   git clone https://github.com/brarbrb/guess-what.git
-   cd MLSE---Guess-what---LLM
-   conda env create -f environment.yml
-   conda activate guess-what
-   python -m backend.main
-```
-
 
 --- 
 ## 📁 Folder structure
@@ -81,4 +59,25 @@ project_root/
 ├── docker-compose.yml
 ├── environment.yml          # for creating conda env
 └── README.md
+```
+---
+
+## 🐋 Setup and Run (Docker)
+   ```bash
+   git clone https://github.com/brarbrb/guess-what.git
+   cd MLSE---Guess-what---LLM
+   docker compose up --build
+   ```
+   (`docker compose down` to stop)
+   
+---
+## ⚙️ Running Locaally (using conda)
+We ensist on running only with conda (we installed miniconda3) if you don't want to suffer on cpu 🙂.
+
+```bash
+   git clone https://github.com/brarbrb/guess-what.git
+   cd MLSE---Guess-what---LLM
+   conda env create -f environment.yml
+   conda activate guess-what
+   python -m backend.main
 ```
