@@ -37,3 +37,31 @@ The project is organized into three main parts:
    docker compose up --build
    ```
    (`docker compose down` to stop)
+
+--- 
+## 📁 Folder structure
+```
+project_root/
+│
+├── backend/
+│   ├── app.py                # Flask entry point
+│   ├── database/
+│   │   ├── db.py             # SQLAlchemy engine + session
+│   │   └── models.py         # ORM models
+│   ├── routes/
+│   │   └── room_api.py       # Game logic routes
+│   ├── templates/            # HTML files
+│   ├── static/               # CSS, JS, and assets
+│   └── extensions.py
+│
+├── lm_core/                  # AI logic (WordLoader, WordSampler, etc.)
+│
+├── docker/
+│   ├── Dockerfile.web
+│   ├── Dockerfile.ai
+│   └── Dockerfile.db
+│
+├── docker-compose.yml
+├── requirements.txt
+└── README.md
+```
