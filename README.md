@@ -1,7 +1,7 @@
 # 🎮 Guess What — MLSE Project
 
 
-![App preview](bin/Screenshot  002150.png)
+![App preview]([bin/Screenshot  002150.png](https://github.com/brarbrb/MLSE---Guess-what---LLM/blob/main/bin/Screenshot%20%20002150.png))
 
 
 
