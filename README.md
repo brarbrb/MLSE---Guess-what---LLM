@@ -1,7 +1,8 @@
 # 🎮 Guess What — MLSE Project
 
 
-![App preview](bin/Screenshot 002150.png)
+![App preview](bin/Screenshot  002150.png)
+
 
 
 ## 👩‍💻 Creators
