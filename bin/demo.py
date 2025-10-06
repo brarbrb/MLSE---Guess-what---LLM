@@ -1,9 +1,9 @@
 # End-to-end demo for ForbiddenAPI (generator.py) with Ollama (Phi-3 Mini)
 # Builds a vocab index, generates forbidden lists, validates sample descriptions.
 
-from core_index import EmbedIndex
-from generator import ForbiddenAPI, GenConfig
-from vocabulary import WordSampler
+from .core_index import EmbedIndex
+from .generator import ForbiddenAPI, GenConfig
+from .vocabulary import WordSampler
 
 
 # def build_vocab(n=80_000, min_len=3, max_len=14): #when submitting put n-larger 
@@ -31,7 +31,7 @@ def main():
         index=idx,
         llm_backend="ollama",
         llm_params={"model": "phi3:mini", "host": "http://localhost:11434"},
-        # config=GenConfig(  - I've already tuned it but it's possible to do it here if needed :) 
+        # config=GenConfig(  - I've already tuned it but it's possible to do outside if needed :) 
         #     faiss_topk=200,
         #     out_k=16,
         #     tau_close=0.70,

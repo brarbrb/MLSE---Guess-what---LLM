@@ -3,20 +3,49 @@ from ...database.db import SessionLocal
 from ...database.models import User, Game, GameSettings, PlayerGame, Round
 from sqlalchemy import func
 from ...extensions import socketio
+import os, requests
+import unicodedata, re
 
 import random
 import string
 import datetime as dt
-import json
-
-# Word source (your mock for now)
-from ...lm_core.word_loader import WordLoader
 
 games_bp = Blueprint("games", __name__)
 
+AI_BASE_URL = os.getenv("AI_BASE_URL", "http://ai:9001")
+
 # --- helpers ---
+def _gen_words():
+    """
+    Ask the AI service for {"targetWord": "...", "forbiddenWords": ["...","..."]}.
+    Fallback to a safe default if AI is unreachable.
+    """
+    try:
+        r = requests.post(f"{AI_BASE_URL}/gen_words", json={}, timeout=30)
+        r.raise_for_status()
+        data = r.json()
+        target = str(data.get("targetWord", "")).strip().lower()
+        forb   = [str(w).strip().lower() for w in (data.get("forbiddenWords") or []) if str(w).strip()]
+        if not target or not forb:
+            raise ValueError("AI returned incomplete data")
+        return target, forb
+    except Exception:
+        # safe fallback if AI is down
+        return "tree", ["leaf", "wood", "forest"]
+    
 def _db():
     return SessionLocal()
+
+def normalize(s: str) -> str:
+    if not s:
+        return ""
+    s = s.strip().lower()
+    # strip diacritics; keep non-Latin scripts (Hebrew/Cyrillic/etc.)
+    s = ''.join(ch for ch in unicodedata.normalize('NFKD', s) if not unicodedata.combining(ch))
+    # keep word chars/spaces + Hebrew + Cyrillic + hyphen
+    s = re.sub(r"[^\w\s\u0590-\u05FF\u0400-\u04FF-]", "", s)
+    s = re.sub(r"\s+", " ", s)
+    return s
 
 def _require_login():
     uid = session.get("user_id")
@@ -210,36 +239,46 @@ def start_game(game_id: int):
         if game.Status != "waiting":
             return jsonify(error="bad_status"), 400
 
-        # Word set
-        wl = WordLoader()
-        target = wl.generate_target_word()
-        if isinstance(target, (list, tuple)) and target:
-            target = target[0]
-        target = str(target or "")
+        # Tell clients we’re starting AI generation (creator sees spinner; players see waiting popup)
+        try:
+            socketio.emit("round:ai_progress", {"phase": "generating_words"}, room=game.GameID)
+        except Exception:
+            pass  # don’t fail start on a websocket hiccup
 
-        forbidden_list = wl.generate_forbidden_list(target) or []
-        if not isinstance(forbidden_list, (list, tuple)):
-            forbidden_list = [str(forbidden_list)]
-        forbidden_list = list(forbidden_list)
+        # 1) Ask AI for target/forbidden (or fallback)
+        target, forbidden_list = _gen_words()
 
+        # 2) Create first round with normalized target; stay in waiting_description
         round_rec = Round(
             GameID=game.GameID,
             RoundNumber=1,
-            RoundWinnerID=None,            # now nullable ✔
+            RoundWinnerID=None,
             TargetWord=target,
-            Description=None,              # no description yet
-            ForbiddenWords=forbidden_list, # JSON column expects a Python list
+            # NEW: store normalized form for fast equality checks later
+            TargetWordNorm=normalize(target),
+            Description=None,
+            ForbiddenWords=forbidden_list,  # JSON column (list)
             Hints=[],
-            StartTime=None,                # set when description is accepted
+            StartTime=None,                 # set when description accepted
             EndTime=None,
             MaxRoundTime=game.settings.RoundTimeSeconds if game.settings else 180,
-            Status="waiting_description",  # clearer initial state
+            Status="waiting_description",
         )
         db.add(round_rec)
 
         game.Status = "active"
         game.StartedAt = dt.datetime.utcnow()
         db.commit()
+
+        # 3) Notify clients that words are ready (creator modal switches from "loading" → "ready")
+        try:
+            socketio.emit("round:ai_progress", {
+                "phase": "ready",
+                "target": target,
+                "forbidden": forbidden_list,
+            }, room=game.GameID)
+        except Exception:
+            pass
 
         return jsonify(ok=True, room_url=f"/room/{game.GameID}")
     except Exception as e:
@@ -248,6 +287,7 @@ def start_game(game_id: int):
         return jsonify(error="start_failed", detail=str(e)), 400
     finally:
         db.close()
+
 
 # --- My active / past games for right panel ---
 

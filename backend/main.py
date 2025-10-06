@@ -7,16 +7,17 @@ from .database import models
 from .app import register_blueprints, register_error_handlers
 from .extensions import socketio
 from .app import sockets
+import os
 
 ROOT = Path(__file__).resolve().parents[1]
 FRONTEND_STATIC = ROOT / "frontend" / "static"
 FRONTEND_TEMPLATES = ROOT / "frontend" / "templates"
 
 def create_app() -> Flask:
+
     app = Flask(
         __name__,
         static_folder=str(FRONTEND_STATIC),
-        # static_url_path="/static",                 # <- ensure /static works
         template_folder=str(FRONTEND_TEMPLATES),
     )
     app.secret_key = "change-me"
@@ -37,16 +38,21 @@ def create_app() -> Flask:
         if session.get("user_id"):   # already logged in
             return redirect(url_for("pages.menu"))
         return render_template("landing.html")
-
-    # Optional helper for images (you can delete if unused)
-    @app.get("/images/<path:filename>")
-    def images(filename):
-        return send_from_directory(FRONTEND_STATIC / "images", filename)
+    
     app.permanent_session_lifetime = timedelta(days=7)
     return app
 
+import os
+
 if __name__ == "__main__":
-    # create_app().run(debug=True)
     app = create_app()
-    socketio.init_app(app)
-    socketio.run(app, debug=True)
+    socketio.init_app(app, cors_allowed_origins="*")
+    port = int(os.getenv("WEB_PORT", "8000"))
+    debug = os.getenv("FLASK_DEBUG", "0") == "1"
+    socketio.run(
+        app,
+        host="0.0.0.0",
+        port=port,
+        debug=debug,
+        allow_unsafe_werkzeug=True,   # <-- add this
+    )

@@ -62,7 +62,7 @@ class WordSampler:
                     exclude: Optional[List[str]] = None) -> str:
         """
         Return a random word, excluding ones in the given list.
-        Useful for skipping words already used by a player, that we can later generate using SQL tables
+        Useful for skipping words already used by a player.
         """
         if exclude:
             candidates = [w for w in self.vocab if w not in exclude]

@@ -31,7 +31,7 @@ from nltk.corpus import wordnet as wn # for working with synsets (antonyms, desc
 from nltk.stem import WordNetLemmatizer # for working with same-stem words
 from nltk.stem import SnowballStemmer
 
-from core_index import EmbedIndex # used only for defining the type of parmeter in function
+from .core_index import EmbedIndex # used only for defining the type of parmeter in function
 from typing import Dict, List, Tuple
 
 

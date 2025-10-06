@@ -1,7 +1,6 @@
 from flask import Blueprint, request, jsonify, session
 from ...database.db import SessionLocal
 from ...database.models import Game, PlayerGame, Round, Guess, User,  GameSettings, ChatMessage
-from ...lm_core.word_loader import WordLoader
 from ...extensions import socketio
 from sqlalchemy import func
 
@@ -10,6 +9,9 @@ import re
 import json
 
 room_bp = Blueprint("room_api", __name__)
+
+import os, requests  
+AI_BASE_URL = os.getenv("AI_BASE_URL", "http://ai:9001")
 
 # ---------- helpers ----------
 def _db():
@@ -34,6 +36,8 @@ def _emit(event, data, game_id):
     if socketio:
         socketio.emit(event, data, to=f"game-{game_id}")
 
+def _emit_ai(game_id, phase, **extra):
+    _emit("round:ai_progress", {"phase": phase, **extra}, game_id)
 
 def _round_status(rnd) -> str:
     if not rnd or not rnd.Description:
@@ -191,22 +195,58 @@ def put_description(game_id: int):
         if not text:
             return jsonify(error="empty_description"), 400
 
+        # tell clients (creator sees "Verifying…")
+        _emit_ai(game_id, "validating_desc")   # <<< ADDED
+
         # Disallow target/forbidden words from appearing as whole words
         norm_desc = _normalize(text)
         norm_target = _normalize(rnd.TargetWord)
         if norm_target and re.search(rf"(?:^| ){re.escape(norm_target)}(?: |$)", norm_desc):
+            _emit_ai(game_id, "desc_bad", reason=f'Used target word "{rnd.TargetWord}"')  # <<< ADDED
             return jsonify(error="forbidden_word_used", which=rnd.TargetWord), 400
+
         for w in (rnd.ForbiddenWords or []):
             nw = _normalize(w)
             if nw and re.search(rf"(?:^| ){re.escape(nw)}(?: |$)", norm_desc):
+                _emit_ai(game_id, "desc_bad", reason=f'Used forbidden word "{w}"')  # <<< ADDED
                 return jsonify(error="forbidden_word_used", which=w), 400
 
+        # Optional AI verification
+        try:
+            payload = {
+                "targetWord": rnd.TargetWord,
+                "forbiddenWords": list(rnd.ForbiddenWords or []),
+                "description": text,
+            }
+            chk = requests.post(f"{AI_BASE_URL}/check_description", json=payload, timeout=20)
+            chk.raise_for_status()
+            verdict = chk.json()
+            if not verdict.get("ok", False):
+                _emit_ai(  # <<< ADDED
+                    game_id,
+                    "desc_bad",
+                    reason=verdict.get("reason") or "Description violates constraints.",
+                )
+                return jsonify(
+                    error="forbidden_word_used_ai",
+                    which=verdict.get("violated", []),
+                    reason=verdict.get("reason"),
+                ), 400
+        except Exception:
+            # Degraded AI => proceed (keep verifying UI until we accept)
+            pass
+
+        # Accept description
         rnd.Description = text
         if not rnd.StartTime:
             rnd.StartTime = dt.datetime.utcnow()
         rnd.Status = "active"
         db.commit()
 
+        # tell clients: accepted (creator UI can close if you listen to desc_ok)
+        _emit_ai(game_id, "desc_ok")  # <<< ADDED
+
+        # existing broadcast that drives everyone to "active" + closes waiting modal
         _emit("round:description", {
             "description": rnd.Description,
             "startedAt": rnd.StartTime.isoformat() + "Z"
@@ -215,9 +255,12 @@ def put_description(game_id: int):
         return jsonify(ok=True, message="Description accepted", startedAt=rnd.StartTime.isoformat() + "Z")
     except Exception as e:
         db.rollback()
+        # if something blows up after we showed "validating", let UI recover:
+        _emit_ai(game_id, "desc_bad", reason="Server error while saving description.")  # <<< ADDED (best-effort)
         return jsonify(error="desc_failed", detail=str(e)), 400
     finally:
         db.close()
+
 
 @room_bp.put("/api/room/<int:game_id>/guess")
 def put_guess(game_id: int):
@@ -375,22 +418,25 @@ def put_guess(game_id: int):
                 # create next round; turn stays with creator
                 next_rn = (rnd.RoundNumber or 1) + 1
 
-                wl = WordLoader()
-                target_word = wl.generate_target_word()
-                if isinstance(target_word, (list, tuple)) and target_word:
-                    target_word = target_word[0]
-                target_word = str(target_word or "")
-                forbidden_list = wl.generate_forbidden_list(target_word) or []
-                if not isinstance(forbidden_list, (list, tuple)):
-                    forbidden_list = [str(forbidden_list)]
-                forbidden_list = list(forbidden_list)
+                try:
+                    ai_resp = requests.post(f"{AI_BASE_URL}/gen_words", json={}, timeout=30)
+                    ai_resp.raise_for_status()
+                    ai_data = ai_resp.json()
+                    target_word = str(ai_data.get("targetWord", "")).strip().lower()
+                    forbidden_list = list(ai_data.get("forbiddenWords") or [])
+                    if not target_word or not forbidden_list:
+                        raise ValueError("AI returned incomplete words")
+                except Exception:
+                    # safe fallback
+                    target_word = "tree"
+                    forbidden_list = ["leaf", "wood", "forest"]
 
                 new_round = Round(
                     GameID=game.GameID,
                     RoundNumber=next_rn,
                     RoundWinnerID=None,
                     TargetWord=target_word,
-                    Description=None,
+                    Description=None,             # player will fill in
                     ForbiddenWords=forbidden_list,
                     Hints=[],
                     StartTime=None,

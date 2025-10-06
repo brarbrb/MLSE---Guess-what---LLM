@@ -1,12 +1,11 @@
-// frontend/static/js/room.js
 (function () {
   const $  = (s, r=document)=>r.querySelector(s);
   const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
 
   const state = {
     gameId: null,
-    roundNo: null,        // NEW: current round from URL (optional)
-    reviewMode: false,    // NEW: ?review=1 disables live play and enables nav
+    roundNo: null,        
+    reviewMode: false,    
     user: {},
     startedAt: null,
     timerId: null,
@@ -19,6 +18,17 @@
     describer: $("#modal-describer"),
     waiting:   $("#modal-waiting"),
     winner:    $("#modal-winner"),
+  };
+
+    const dsec = {
+    loading:   $("#describer-loading"),
+    ready:     $("#describer-ready"),
+    verifying: $("#describer-verifying"),
+    target:    $("#modal-target"),
+    forb:      $("#modal-forbidden"),
+    form:      $("#describer-form"),
+    descInput: $("#description-input"),
+    descErr:   $("#desc-error")
   };
 
   // --------- URL helpers ---------
@@ -148,7 +158,17 @@
   function setupSockets(){
     if (typeof io === "undefined") return;
     const socket = io();
-    socket.on("connect", ()=> socket.emit("room:join", { game_id: state.gameId }));
+        socket.on("connect", ()=>{
+      socket.emit("room:join", { game_id: state.gameId });
+      // optimistic loader for creators until first snapshot arrives
+      if (!state.reviewMode && state.isCreator) {
+        dsec.loading && (dsec.loading.hidden = false);
+        dsec.ready && (dsec.ready.hidden = true);
+        dsec.verifying && (dsec.verifying.hidden = true);
+        showModal(modals.describer);
+      }
+    });
+
     socket.on("chat:new", (msg)=> addChatLine(msg.user, msg.text));
     socket.on("round:description", (data)=> onDescriptionLive(data));
     socket.on("round:won", (data)=> onWinnerLive(data));
@@ -202,43 +222,76 @@
     if (d.status !== "active") startTimer(null);
 
     // modals (no modals in review mode)
+    // modals (no modals in review mode)
     if (!state.reviewMode) {
-  if (state.betweenRounds) {
-    // Freeze UI during the inter-round countdown
-    hideModal(modals.describer);
-    hideModal(modals.waiting);
-  } else if (d.status === "waiting_description") {
-    if (state.isCreator) {
-      $("#modal-target").textContent = d.targetWord || "—";
-      const ul=$("#modal-forbidden"); ul.innerHTML="";
-      (d.forbiddenWords||[]).forEach(w=>{ const li=document.createElement("li"); li.textContent=w; ul.appendChild(li); });
-      showModal(modals.describer);
-    } else {
-      $("#waiting-title").textContent = "Waiting for description…";
-      $("#waiting-text").textContent = "The describer is preparing a clue.";
-      showModal(modals.waiting);
+      if (state.betweenRounds) {
+        hideModal(modals.describer);
+        hideModal(modals.waiting);
+      } else if (d.status === "waiting_description") {
+        if (state.isCreator) {
+          // CREATOR: show loading until target/forbidden arrive, then show ready
+          if (d.targetWord && (d.forbiddenWords || []).length) {
+            // fill data + show READY
+            dsec.target && (dsec.target.textContent = d.targetWord || "—");
+            if (dsec.forb) {
+              dsec.forb.innerHTML = "";
+              (d.forbiddenWords || []).forEach(w => {
+                const li = document.createElement("li");
+                li.textContent = w;
+                dsec.forb.appendChild(li);
+              });
+            }
+            dsec.loading && (dsec.loading.hidden = true);
+            dsec.verifying && (dsec.verifying.hidden = true);
+            dsec.ready && (dsec.ready.hidden = false);
+          } else {
+            // still generating → LOADING
+            dsec.loading && (dsec.loading.hidden = false);
+            dsec.ready && (dsec.ready.hidden = true);
+            dsec.verifying && (dsec.verifying.hidden = true);
+          }
+          showModal(modals.describer);
+        } else {
+          // PLAYERS: waiting with spinner
+          $("#waiting-title").textContent = "Waiting for description…";
+          $("#waiting-text").textContent  = "The describer is preparing a clue.";
+          showModal(modals.waiting);
+        }
+      } else if (d.status === "active") {
+        // when round actually starts, close all prep modals
+        hideModal(modals.describer);
+        hideModal(modals.waiting);
+      } else if (d.status === "completed") {
+        startTimer(null);
+      }
     }
-  } else if (d.status === "active") {
-    hideModal(modals.describer);
-    hideModal(modals.waiting);
-  } else if (d.status === "completed") {
-    startTimer(null);
-  }
-}
+
 
   }
 
   // live handlers
   function onDescriptionLive(data){
-  if (state.reviewMode || state.betweenRounds) return;   // <— add this
-    $("#waiting-title").textContent = "Description ready!";
-    $("#waiting-text").textContent  = data.description || "";
-    $("#modal-waiting").classList.add("fade-in");
-    startTimer(data.startedAt || null);
-    setDesc(data.description || "");
+    if (state.reviewMode || state.betweenRounds) return;
+
+    // everyone gets the description text
+    const desc = data.description || "";
+    setDesc(desc);
     setBadge("active");
-    setTimeout(()=> hideModal(modals.waiting), 3000);
+    startTimer(data.startedAt || null);
+
+    // players: drop the waiting modal
+    hideModal(modals.waiting);
+
+    // describer: close the modal if it was verifying/loading
+    hideModal(modals.describer);
+
+    // small flair for players that were waiting
+    $("#waiting-title").textContent = "Description ready!";
+    $("#waiting-text").textContent  = desc;
+    $("#modal-waiting").classList.add("fade-in");
+    setTimeout(()=> hideModal(modals.waiting), 1200);
   }
+
 
 function onWinnerLive(data){
   if (state.reviewMode) return;
@@ -349,17 +402,28 @@ function onWinnerLive(data){
       const txt=$("#description-input").value.trim();
       if(!txt) return;
       const res = await sendDescription(txt);
-      if(res.error){
-        const p=$("#desc-error"); p.textContent = res.which
-          ? `Description invalid: contains "${res.which}".`
-          : (res.error || "Failed to submit.");
-        p.hidden = false;
+
+      if (res?.error) {
+        if (dsec.descErr) {
+          dsec.descErr.textContent = res.which
+            ? `Description invalid: contains "${res.which}".`
+            : (res.error || "Failed to submit.");
+          dsec.descErr.hidden = false;
+        }
+        // stay on READY so user can edit and resubmit
+        dsec.loading && (dsec.loading.hidden = true);
+        dsec.ready && (dsec.ready.hidden = false);
+        dsec.verifying && (dsec.verifying.hidden = true);
         return;
       }
-      $("#desc-error").hidden = true;
-      hideModal(modals.describer);
-      setDesc(txt);
-      setBadge("active");
+
+      // switch to VERIFYING (do NOT close modal yet)
+      if (dsec.descErr) dsec.descErr.hidden = true;
+      dsec.loading && (dsec.loading.hidden = true);
+      dsec.ready && (dsec.ready.hidden = true);
+      dsec.verifying && (dsec.verifying.hidden = false);
+      // wait for server to confirm (either snapshot d.status === "active" or socket "round:description")
+
     });
 
     // LAST-round-only button (we show it only on last round)

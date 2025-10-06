@@ -63,7 +63,17 @@
   <div id="modal-overlay" class="modal-overlay" hidden></div>
 
   <!-- Creator: describe -->
-  <div id="modal-describer" class="modal" hidden>
+<!-- Creator: describe -->
+<div id="modal-describer" class="modal" hidden>
+  <!-- LOADING: shown while AI generates target + forbidden -->
+  <div id="describer-loading">
+    <h3>Setting up the round…</h3>
+    <p class="muted">Please wait while the AI generates a target word and forbidden words.</p>
+    <div class="spinner" aria-label="Loading"></div>
+  </div>
+
+  <!-- READY: shown after AI returns target/forbidden -->
+  <div id="describer-ready" hidden>
     <h3>Your word</h3>
     <div class="word-card">
       <div><b>Target:</b> <span id="modal-target">—</span></div>
@@ -81,11 +91,21 @@
     <p id="desc-error" class="error" hidden></p>
   </div>
 
-  <!-- Players: waiting / reveal -->
-  <div id="modal-waiting" class="modal" hidden>
-    <h3 id="waiting-title">Waiting for description…</h3>
-    <p id="waiting-text" class="muted">The describer is preparing a clue.</p>
+  <!-- VERIFYING: shown right after describer submits -->
+  <div id="describer-verifying" hidden>
+    <h3>Verifying your description…</h3>
+    <p class="muted">Don’t close this window.</p>
+    <div class="spinner" aria-label="Loading"></div>
   </div>
+</div>
+
+<!-- Players: waiting / reveal -->
+<div id="modal-waiting" class="modal" hidden>
+  <h3 id="waiting-title">Waiting for description…</h3>
+  <p id="waiting-text" class="muted">The describer is preparing a clue.</p>
+  <div class="spinner" aria-label="Loading"></div>
+</div>
+
 
     <!-- Winner -->
     <div id="modal-winner" class="modal" hidden>
@@ -95,8 +115,6 @@
 
       <!-- existing final results container is fine -->
       <div id="winner-final-results" hidden></div>
-
-      <!-- ✨ ADD THIS LINE -->
       <p id="between-rounds-countdown" class="muted" hidden>The next round will start in 10s</p>
 
       <div class="modal-actions">
