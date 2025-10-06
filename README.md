@@ -32,7 +32,7 @@ The project is organized into three main parts:
 ## ⚙️ Setup and Run (Docker)
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/guess-what.git
+   git clone https://github.com/brarbrb/guess-what.git
    cd guess-what
    docker compose up --build
    ```
