@@ -56,24 +56,25 @@ We ensist on running only with conda (we installed miniconda3) if you don't want
 project_root/
 │
 ├── backend/
-│   ├── app.py                # Flask entry point
+│   ├── main.py                # Flask entry point
 │   ├── database/
 │   │   ├── db.py             # SQLAlchemy engine + session
 │   │   └── models.py         # ORM models
 │   ├── routes/
 │   │   └── room_api.py       # Game logic routes
+│   ├── lm_core/      # AI logic
+│   └── extensions.py   
+|
+├── frontend/
 │   ├── templates/            # HTML files
 │   ├── static/               # CSS, JS, and assets
-│   └── extensions.py
+│               
 │
-├── lm_core/                  # AI logic (WordLoader, WordSampler, etc.)
-│
-├── docker/
-│   ├── Dockerfile.web
-│   ├── Dockerfile.ai
-│   └── Dockerfile.db
+├── services/
+│   ├── web/                #dockerfile for each service and requirements.txt
+│   └── ai/ 
 │
 ├── docker-compose.yml
-├── requirements.txt
+├── environment.yml          # for creating conda env
 └── README.md
 ```
