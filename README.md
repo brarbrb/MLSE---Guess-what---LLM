@@ -1,5 +1,9 @@
 # 🎮 Guess What — MLSE Project
 
+
+![App preview](bin/Screenshot 002150.png)
+
+
 ## 👩‍💻 Creators
 Barbara Aleksandrov, Omer-Shay Becker & Kfir Nissim
 
