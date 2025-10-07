@@ -70,6 +70,8 @@ project_root/
 ├── environment.yml          # for creating conda env
 └── README.md
 ```
+`bin` folder stores some assets and modules for future improvement
+
 ---
 
 ## 🐋 Setup and Run (Docker)
