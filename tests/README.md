@@ -1,4 +1,4 @@
-# Test Overview
+# Testing Overview
 
 This folder contains all automated tests for the Guess What project.
 Tests are organized by scope — from unit-level database checks to full-stack integration and stress scenarios.
@@ -17,6 +17,7 @@ In addition we performed e2e testing manually: frontend, templates, buttons dark
 
 
 ## Running tests 🏃‍♀️
+All tests are run from root folder! 
 
 1. Pytest
    Run with
@@ -29,9 +30,17 @@ In addition we performed e2e testing manually: frontend, templates, buttons dark
     pytest tests/security
     ```
 2. Stress tests  💪
+
+Note: That for these tests there's need to run the flask app!
+
 ```bash
   $ locust -f tests/stress/locustfile_heavy.py --headless -t 60s --host http://localhost:8000
   
   $ locust -f tests/stress/locustfile.py --headless -u 50 -r 20 -t 30s --host http://localhost:8000
   ```
 
+## Dependencies 
+Since we used the dependencies (pytest, sqlalchemy etc.) there's need to istall Dependencies. Run this code: 
+```
+   
+```
