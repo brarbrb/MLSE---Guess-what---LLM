@@ -42,5 +42,5 @@ Note: That for these tests there's need to run the flask app!
 ## Dependencies 
 Since we used the dependencies (pytest, sqlalchemy etc.) there's need to istall Dependencies. Run this code: 
 ```
-   
+   pip install -r tests/requirements-test.txt
 ```
