@@ -102,6 +102,7 @@ class Round(Base):
     RoundNumber: Mapped[int] = mapped_column(Integer, nullable=False)
     RoundWinnerID: Mapped[int | None] = mapped_column(ForeignKey("User.UserID"), nullable=True, default=None)
     TargetWord: Mapped[str] = mapped_column(String(100), nullable=False)
+    TargetWordNorm: Mapped[str] = mapped_column(String(100), nullable=False, index=True, default="")
     Description: Mapped[str | None] = mapped_column(Text, nullable=True)
     Guesses: Mapped[list] = mapped_column(JSON, default=list)
     ForbiddenWords: Mapped[list] = mapped_column(JSON, nullable=False, default=list)

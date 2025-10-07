@@ -16,7 +16,7 @@ def profile_summary():
 
     db = _db()
     try:
-        # Totals (feel free to adapt if you maintain denormalized totals on User)
+        # some basic stats
         total_games = (
             db.query(func.count(PlayerGame.PlayerGameID))
               .filter(PlayerGame.UserID == uid)
@@ -42,15 +42,13 @@ def profile_summary():
             .filter(Guess.GuesserID == uid, Guess.IsCorrect == True)
         )
 
-        # Fastest 3 (ascending)
         fastest = (
             base.order_by("secs")
                 .limit(3)
                 .all()
         )
 
-        # Hardest 3 (descending by response time)
-        hardest = (
+        hardest = ( # longest time to answer correctly
             base.order_by(func.coalesce(Guess.ResponseTimeSeconds, 0).desc())
                 .limit(3)
                 .all()

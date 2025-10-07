@@ -40,9 +40,7 @@ def normalize(s: str) -> str:
     if not s:
         return ""
     s = s.strip().lower()
-    # strip diacritics; keep non-Latin scripts (Hebrew/Cyrillic/etc.)
     s = ''.join(ch for ch in unicodedata.normalize('NFKD', s) if not unicodedata.combining(ch))
-    # keep word chars/spaces + Hebrew + Cyrillic + hyphen
     s = re.sub(r"[^\w\s\u0590-\u05FF\u0400-\u04FF-]", "", s)
     s = re.sub(r"\s+", " ", s)
     return s
@@ -54,7 +52,7 @@ def _require_login():
     return uid, None
 
 def _gen_code(n=6):
-    # 6-char uppercase code
+    # 6-char uppercase gamecode
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=n))
 
 # --- Create game (+ settings) ---
@@ -106,7 +104,6 @@ def create_game():
         db.add(game)
         db.flush()  # get GameID
 
-        # 1:1 settings
         settings = GameSettings(
             GameID=game.GameID,
             RoundTimeSeconds=round_time,
@@ -133,7 +130,7 @@ def create_game():
     finally:
         db.close()
 
-# --- Join by code (private) ---
+# --- Private game ---
 @games_bp.post("/join_by_code")
 def join_by_code():
     uid, err = _require_login()
@@ -164,7 +161,7 @@ def join_by_code():
     finally:
         db.close()
 
-# --- Join random (any waiting public game with free slot) ---
+# --- Join random: any waiting public game with free slot ---
 @games_bp.post("/join_random")
 def join_random():
     uid, err = _require_login()
@@ -243,21 +240,19 @@ def start_game(game_id: int):
         try:
             socketio.emit("round:ai_progress", {"phase": "generating_words"}, room=game.GameID)
         except Exception:
-            pass  # don’t fail start on a websocket hiccup
+            pass  # ignore socket errors from api call to ai 
 
-        # 1) Ask AI for target/forbidden (or fallback)
+        # uses AI (but has a fallback))
         target, forbidden_list = _gen_words()
 
-        # 2) Create first round with normalized target; stay in waiting_description
         round_rec = Round(
             GameID=game.GameID,
             RoundNumber=1,
             RoundWinnerID=None,
             TargetWord=target,
-            # NEW: store normalized form for fast equality checks later
             TargetWordNorm=normalize(target),
             Description=None,
-            ForbiddenWords=forbidden_list,  # JSON column (list)
+            ForbiddenWords=forbidden_list,  
             Hints=[],
             StartTime=None,                 # set when description accepted
             EndTime=None,
@@ -270,7 +265,7 @@ def start_game(game_id: int):
         game.StartedAt = dt.datetime.utcnow()
         db.commit()
 
-        # 3) Notify clients that words are ready (creator modal switches from "loading" → "ready")
+        # Notifying clients that words are ready (creator modal switches from "loading" → "ready")
         try:
             socketio.emit("round:ai_progress", {
                 "phase": "ready",
@@ -290,7 +285,6 @@ def start_game(game_id: int):
 
 
 # --- My active / past games for right panel ---
-
 @games_bp.get("/my_active")
 def my_active():
     uid, err = _require_login()
@@ -312,14 +306,13 @@ def my_active():
         for g in games:
             total_rounds = int(getattr(g, "TotalRounds", 0) or 0)
 
-            # currentRound = completed_count + 1 (but never exceed total_rounds if known)
             completed_count = (
                 db.query(func.count(Round.RoundID))
                   .filter(Round.GameID == g.GameID, Round.Status == "completed")
                   .scalar()
             ) or 0
 
-            # Start from 1 even if nothing completed yet
+            # shows currennt running round, or 1 if none started yet
             current_round = completed_count + 1
             if total_rounds > 0:
                 current_round = min(current_round, total_rounds)
@@ -332,7 +325,7 @@ def my_active():
                 "createdAt": g.CreatedAt.isoformat() + "Z" if getattr(g, "CreatedAt", None) else None,
                 "startedAt": g.StartedAt.isoformat() + "Z" if getattr(g, "StartedAt", None) else None,
                 "status": g.Status,
-                "totalRounds": total_rounds or None,   # keep None if unknown
+                "totalRounds": total_rounds or None,  
                 "currentRound": int(max(1, current_round)),
             })
 

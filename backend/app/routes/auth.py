@@ -1,4 +1,3 @@
-# backend/app/routes/auth.py
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 from ...database.db import SessionLocal
@@ -11,7 +10,6 @@ def _get_db():
 
 @auth_bp.get("/landing")
 def landing():
-    # Landing with logo + buttons
     return render_template("landing.html")
 
 @auth_bp.get("/signup")
