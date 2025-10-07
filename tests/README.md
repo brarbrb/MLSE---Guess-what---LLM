@@ -16,9 +16,22 @@ In addition we performed e2e testing manually: frontend, templates, buttons dark
 | `tests/stress/` | **Locust** load-testing scripts that simulate hundreds of concurrent users and malformed inputs under stress. |
 
 
+## Running tests 🏃‍♀️
 
-$ locust -f tests/stress/locustfile_heavy.py --headless -t 60s --host http://localhost:8000
+1. Pytest
+   Run with
+   `pytest -v ` - (-q for headless).
 
-$ locust -f tests/stress/locustfile.py --headless -u 50 -r 20 -t 30s --host http://localhost:8000
+    This tests:
+   ```
+   pytest tests/unit
+    pytest tests/integration
+    pytest tests/security
+    ```
+2. Stress tests  💪
+```bash
+  $ locust -f tests/stress/locustfile_heavy.py --headless -t 60s --host http://localhost:8000
+  
+  $ locust -f tests/stress/locustfile.py --headless -u 50 -r 20 -t 30s --host http://localhost:8000
+  ```
 
-pytest -v (-q for headless)
